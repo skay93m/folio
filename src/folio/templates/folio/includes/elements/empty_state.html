@@ -1,0 +1,4 @@
+<div{% if empty_id %} id="{{ empty_id }}"{% endif %} class="{{ wrapper_class|default:'surface text-center' }}"{% if is_hidden %} hidden{% endif %}>
+  <h3>{{ empty_heading|default:"You are up to date." }}</h3>
+  <p class="{{ empty_body_class|default:'small text-body-secondary mb-0' }}">{{ empty_body|default:"New work will appear here when it needs your attention." }}</p>
+</div>

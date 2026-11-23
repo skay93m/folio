@@ -1,0 +1,16 @@
+<footer class="sk-site-footer">
+  <div class="sk-footer-inner">
+    {% if footer_copyright %}
+      <p class="sk-footer-copy">{{ footer_copyright }}</p>
+    {% endif %}
+    {% if footer_note %}
+      <p class="sk-footer-prose">
+        {% if footer_source_url %}
+          This site is <a href="{{ footer_source_url }}" target="_blank" rel="noopener noreferrer">{{ footer_source_label }}</a>. {{ footer_note }}
+        {% else %}
+          {{ footer_note }}
+        {% endif %}
+      </p>
+    {% endif %}
+  </div>
+</footer>

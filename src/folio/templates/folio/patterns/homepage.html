@@ -1,0 +1,36 @@
+<div class="sk-spatial-shell sk-gwern-main">
+  <section class="sk-section-block sk-statement-zone">
+    <h2>{{ page.author_name }}</h2>
+    <div class="sk-meta-line sk-headline">{{ page.headline }}</div>
+    {% for para in page.statement_paragraphs %}
+      <p>{{ para }}</p>
+    {% endfor %}
+  </section>
+
+  <section class="sk-section-block">
+    <h2>{{ page.now_heading }}</h2>
+    {% for para in page.now_paragraphs %}
+      <p>{{ para }}</p>
+    {% endfor %}
+  </section>
+
+  <section class="sk-section-block">
+    <h2>{{ page.notes_heading }}</h2>
+    <p>{{ page.notes_intro }}</p>
+    <div class="sk-section-list">
+      {% for note in page.notes %}
+        <div class="mb-3">
+          <div><a href="{{ note.href }}">{{ note.title }}</a> <span class="sk-meta-line">({{ note.date }})</span></div>
+          <div>{{ note.summary }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="sk-section-block">
+    <h2>{{ page.long_form_heading }}</h2>
+    {% for para in page.long_form_paragraphs %}
+      <p>{{ para }}</p>
+    {% endfor %}
+  </section>
+</div>

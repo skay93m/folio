@@ -1,0 +1,78 @@
+{
+  "brand": "#FF4F40",
+  "canvas": {
+    "light": "#F7F6F2",
+    "dark": "#17191C"
+  },
+  "families": [
+    {
+      "name": "Coral",
+      "lightSurface": "#FFE2DC",
+      "lightMark": "#FF4F40",
+      "darkMark": "#FF4F40"
+    },
+    {
+      "name": "Blue",
+      "lightSurface": "#DBEAFE",
+      "lightMark": "#2864B4",
+      "darkMark": "#79B8FF"
+    },
+    {
+      "name": "Gold",
+      "lightSurface": "#FFF0C2",
+      "lightMark": "#9A6700",
+      "darkMark": "#EFC768"
+    },
+    {
+      "name": "Teal",
+      "lightSurface": "#D8F3EC",
+      "lightMark": "#087F75",
+      "darkMark": "#5ED3BF"
+    },
+    {
+      "name": "Violet",
+      "lightSurface": "#EDE3FA",
+      "lightMark": "#7751B0",
+      "darkMark": "#C3A3F5"
+    },
+    {
+      "name": "Rose",
+      "lightSurface": "#FBE0ED",
+      "lightMark": "#B04478",
+      "darkMark": "#F49AC2"
+    },
+    {
+      "name": "Cyan",
+      "lightSurface": "#D9F2FA",
+      "lightMark": "#14758F",
+      "darkMark": "#75D4ED"
+    },
+    {
+      "name": "Orange",
+      "lightSurface": "#FCE7D5",
+      "lightMark": "#B45114",
+      "darkMark": "#FFAE76"
+    },
+    {
+      "name": "Leaf",
+      "lightSurface": "#E6EECF",
+      "lightMark": "#55732B",
+      "darkMark": "#B1CE7D"
+    },
+    {
+      "name": "Slate",
+      "lightSurface": "#E3E8EF",
+      "lightMark": "#52677F",
+      "darkMark": "#AFBED4"
+    }
+  ],
+  "states": {
+    "success": "Teal",
+    "warning": "Gold",
+    "error": "Coral",
+    "information": "Blue",
+    "neutral": "Slate"
+  },
+  "defaultPrint": "colour",
+  "printOptions": ["colour", "greyscale", "black-white"]
+}

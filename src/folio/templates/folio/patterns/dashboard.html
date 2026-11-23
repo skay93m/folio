@@ -1,0 +1,97 @@
+<div class="page-shell">
+  <div class="dashboard-head">
+    <div class="page-head">
+      <div class="eyebrow">{{ page.eyebrow }}</div>
+      <h1>{{ page.title }}</h1>
+      <p>{{ page.intro }}</p>
+    </div>
+    <div>
+      <label class="form-label subtle" for="period">{{ page.period_label }}</label>
+      <select id="period" class="form-select" aria-label="{{ page.period_aria_label }}">
+        {% for period in page.periods %}
+          <option value="{{ period.period_key }}"{% if period.period_key == page.selected_period %} selected{% endif %}>{{ period.period_label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div id="metrics" class="metrics-grid">
+    {% for metric in page.active_period.metrics %}
+      <div class="metric-card">
+        <div class="metric-label">{{ metric.label }}</div>
+        <div class="metric-value">{{ metric.value }}</div>
+        <div class="metric-comparison">{{ metric.comparison }}</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="dashboard-grid">
+    <section class="surface">
+      <div class="section-title">
+        <h2>{{ page.chart_title }}</h2>
+        <span class="subtle">{{ page.chart_subtitle }}</span>
+      </div>
+      <div class="chart-legend">
+        <span><i class="chart-swatch-coral"></i>Completed · solid line / square</span>
+        <span><i class="chart-swatch-blue"></i>Arrived · dashed line / circle</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="trend" role="img" aria-label="{{ page.chart_aria_label }}"></canvas>
+      </div>
+      <details>
+        <summary class="subtle">View chart data</summary>
+        <div id="trend-table" class="table-responsive mt-2">
+          <table class="table">
+            <caption class="visually-hidden">Sample work activity</caption>
+            <thead>
+              <tr>
+                <th scope="col">Period</th>
+                <th scope="col">Completed</th>
+                <th scope="col">Arrived</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for label, completed_val, arrived_val in page.active_period.table_rows %}
+                <tr>
+                  <td>{{ label }}</td>
+                  <td>{{ completed_val }}</td>
+                  <td>{{ arrived_val }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <template id="trend-row-template">
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </template>
+    </section>
+
+    <section class="surface">
+      <div class="section-title">
+        <h2>{{ page.attention_heading }}</h2>
+      </div>
+      {% for item in page.attention_items %}
+        <div class="attention-row">
+          <div class="d-flex justify-content-between align-items-center gap-2 mb-1">
+            <strong>{{ item.title }}</strong>
+            {% include "folio/includes/elements/status_badge.html" with status_label=item.role status_role=item.role only %}
+          </div>
+          <p>{{ item.description }}</p>
+          <a href="{{ item.action_href }}">{{ item.action_label }} &rarr;</a>
+        </div>
+      {% endfor %}
+    </section>
+  </div>
+
+  <div class="coral-callout">
+    <div class="eyebrow">{{ page.direction_eyebrow }}</div>
+    <p>{{ page.direction_text }}</p>
+  </div>
+  <p class="subtle mt-3">{{ page.disclaimer }}</p>
+  {{ page_json_data|json_script:"dashboard-data" }}
+</div>
