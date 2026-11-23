@@ -1,9 +1,11 @@
 """Slice 2 tests: All 7 pattern contracts, validations, fixtures, and templates."""
 
 import re
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
-from django.test import Client
+from django.test import Client, RequestFactory
 
 import folio
 from folio.contracts import (
@@ -33,6 +35,62 @@ from folio.contracts import (
 )
 from folio.fixtures import PATTERN_KEYS, get_pattern_page
 from folio.navigation import resolve_pattern_key
+
+
+@pytest.mark.parametrize("pattern", ["reading", "homepage"])
+def test_editorial_metadata_and_script_opt_out(pattern):
+    page = replace(get_pattern_page(pattern), lang="cy", meta_description='A "quoted" description',
+                   canonical_url="https://example.com/note/", author_meta="Sample Author",
+                   citation_date="2026-11-23", include_scripts=False)
+    for html in (folio.render_static(page, extra_context={"page_title": "Site title"}),
+                 folio.render(RequestFactory().get("/"), page).content.decode()):
+        assert '<html lang="cy"' in html
+        assert 'name="description" content="A &quot;quoted&quot; description"' in html
+        assert 'name="author" content="Sample Author"' in html
+        assert 'name="citation_author" content="Sample Author"' in html
+        assert f'name="citation_title" content="{page.title}"' in html
+        assert 'name="citation_date" content="2026-11-23"' in html
+        assert 'rel="canonical" href="https://example.com/note/"' in html
+        assert '<script' not in html
+    with pytest.raises(ValueError, match="lang"):
+        replace(page, lang=" ")
+    default_html = folio.render_static(get_pattern_page(pattern))
+    assert '<html lang="en-GB"' in default_html
+    assert '<script src=' in default_html
+    assert 'name="citation_title"' not in default_html
+
+
+def test_homepage_long_form_links_replace_fallback_prose():
+    page = get_pattern_page("homepage")
+    note = HomepageNoteItem("essay", "A longer essay", "23 November 2026", "Essay summary.", "/essay/")
+    html = folio.render_static(replace(page, long_form_notes=(note,)))
+    assert '<a href="/essay/">A longer essay</a>' in html
+    assert "Essay summary." in html
+    assert page.long_form_paragraphs[0] not in html
+    assert page.long_form_paragraphs[0] in folio.render_static(page)
+
+
+def test_public_sources_use_generic_consumer_names():
+    root = Path(__file__).resolve().parent.parent
+    private_names = ("place" + "mat", "cock" + "pit", "study" + "_coach")
+    for directory in (root / "src", root / "tests"):
+        for path in directory.rglob("*"):
+            if path.is_file() and "__pycache__" not in path.parts:
+                content = path.read_bytes().lower()
+                assert not any(name.encode() in content for name in private_names), path
+
+
+def test_markdown_reading_renders_without_synthetic_sections():
+    page = Reading(eyebrow="Note", title="A Markdown note", meta=(),
+                   body_html='<p>A note with <a href="/source/">a source</a>.</p>')
+    html = folio.render_static(page)
+    assert '<div class="sk-reading-body"><p>A note with' in html
+    assert 'class="abstract"' not in html
+    assert '>Contents</div>' not in html
+    with pytest.raises(ValueError, match="sections|body_html"):
+        Reading(eyebrow="Note", title="Empty note", meta=(), body_html="  ")
+    with pytest.raises(ValueError, match="faux-style Serif"):
+        Reading(eyebrow="Note", title="Styled note", meta=(), body_html="<p><em>Text</em></p>")
 
 
 def test_faux_serif_tags_rejected_in_reading_and_homepage_prose():

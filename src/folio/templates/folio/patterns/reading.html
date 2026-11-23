@@ -3,7 +3,9 @@
     {% if page.back_href %}
       <a class="sk-back-link" href="{{ page.back_href }}">&larr; {{ page.back_label }}</a>
     {% endif %}
-    <div class="eyebrow">Contents</div>
+    {% if page.sections or page.backlinks or page.similar_links %}
+      <div class="eyebrow">Contents</div>
+    {% endif %}
     {% for sec in page.sections %}
       <a href="#{{ sec.id }}"{% if forloop.first %} class="active"{% endif %}>{{ sec.heading }}</a>
     {% endfor %}
@@ -24,9 +26,11 @@
       {% endfor %}
     </div>
 
-    <div class="abstract">
-      <p>{{ page.abstract }}</p>
-    </div>
+    {% if page.abstract %}
+      <div class="abstract">
+        <p>{{ page.abstract }}</p>
+      </div>
+    {% endif %}
 
     {% if page.provenance %}
       <div class="article-provenance">
@@ -38,6 +42,8 @@
         {% endfor %}
       </div>
     {% endif %}
+
+    {% if page.body_html %}<div class="sk-reading-body">{{ page.body_html|safe }}</div>{% endif %}
 
     {% for sec in page.sections %}
       <section id="{{ sec.id }}">

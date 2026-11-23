@@ -170,6 +170,7 @@ class Homepage:
     long_form_heading: str
     long_form_paragraphs: tuple[str, ...]
     socials: tuple[SocialLink, ...]
+    long_form_notes: tuple[HomepageNoteItem, ...] = ()
     footer_copyright: str = "© 2026 SK Design System"
     footer_note: str = "Built in public. Corrections welcome."
     footer_source_url: str = "https://github.com/skay93m/folio"
@@ -182,12 +183,20 @@ class Homepage:
     print_mode: PrintMode = "colour"
     show_theme_toggle: bool = False
 
+    lang: str = "en-GB"
+    meta_description: str = ""
+    canonical_url: str = ""
+    author_meta: str = ""
+    citation_date: str = ""
+    include_scripts: bool = True
+
     pattern_key: str = "homepage"
     partial_template: str = "folio/patterns/homepage.html"
     body_classes: str = "sk-spatial-canvas sk-gwern-folio"
     is_stage1_shell: bool = True
 
     def __post_init__(self) -> None:
+        require_non_empty(self.lang, "Homepage.lang")
         require_sentence_case(self.author_name, "Homepage.author_name")
         require_non_empty(self.headline, "Homepage.headline")
         require_sentence_case(self.now_heading, "Homepage.now_heading")
@@ -275,8 +284,9 @@ class Reading:
     eyebrow: str
     title: str
     meta: tuple[str, ...]
-    abstract: str
-    sections: tuple[ReadingSection, ...]
+    abstract: str = ""
+    sections: tuple[ReadingSection, ...] = ()
+    body_html: str = ""
     provenance: tuple[ProvenanceEntry, ...] = ()
     margin_notes: tuple[MarginNote, ...] = ()
     backlinks: tuple[ReadingRelation, ...] = ()
@@ -300,6 +310,13 @@ class Reading:
     print_mode: PrintMode = "colour"
     show_theme_toggle: bool = True
 
+    lang: str = "en-GB"
+    meta_description: str = ""
+    canonical_url: str = ""
+    author_meta: str = ""
+    citation_date: str = ""
+    include_scripts: bool = True
+
     pattern_key: str = "reading"
     partial_template: str = "folio/patterns/reading.html"
 
@@ -314,16 +331,19 @@ class Reading:
         return self.standalone_header
 
     def __post_init__(self) -> None:
+        require_non_empty(self.lang, "Reading.lang")
         require_non_empty(self.eyebrow, "Reading.eyebrow")
         require_sentence_case(self.title, "Reading.title")
-        require_non_empty(self.abstract, "Reading.abstract")
-        forbid_faux_serif_tags(self.abstract, "Reading.abstract")
+        if self.abstract:
+            forbid_faux_serif_tags(self.abstract, "Reading.abstract")
+        if self.body_html:
+            forbid_faux_serif_tags(self.body_html, "Reading.body_html")
         require_non_empty(self.toc_aria_label, "Reading.toc_aria_label")
         require_non_empty(self.margin_aria_label, "Reading.margin_aria_label")
         validate_theme(self.theme)
         validate_print_mode(self.print_mode)
-        if not self.sections:
-            raise ValueError("Reading.sections must contain at least one section")
+        if not self.sections and not self.body_html.strip():
+            raise ValueError("Reading requires sections or non-empty body_html")
 
 
 @dataclass(frozen=True, slots=True)
@@ -560,7 +580,7 @@ class JournalPreviewEntry:
 
 @dataclass(frozen=True, slots=True)
 class WorkJournal:
-    """Work session with contextual journal capture preview (Placemat owns production persistence)."""
+    """Work session with contextual journal capture preview (the consuming application owns production persistence)."""
 
     eyebrow: str
     title: str
@@ -576,10 +596,10 @@ class WorkJournal:
     entries: tuple[JournalPreviewEntry, ...] = ()
     pane_aria_label: str = "Contextual journal"
     preview_notice: str = (
-        "Sample journal · Memory-only preview (Placemat owns production journal persistence)"
+        "Sample journal · Memory-only preview (the consuming application owns production journal persistence)"
     )
     supporting_context: str = (
-        "The journal stays associated with this work. Production save and recovery reuse Placemat."
+        "The journal stays associated with this work. Production save and recovery belong to the consuming application."
     )
     home_href: str = "?page=launchpad"
     home_aria_label: str = "SK launchpad"
@@ -664,8 +684,8 @@ class WorkQueue:
     search_aria_label: str = "Search this queue"
     status_aria_label: str = "Work status"
     table_caption: str = "Work items in the selected queue"
-    cockpit_scope_note: str = (
-        "Cockpit initial validation scope: concise Launchpad + Housekeeping queue."
+    scope_note: str = (
+        "Consuming application initial validation scope: concise Launchpad + Housekeeping queue."
     )
     home_href: str = "?page=launchpad"
     home_aria_label: str = "SK launchpad"

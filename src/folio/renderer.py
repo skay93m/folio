@@ -73,6 +73,12 @@ def _build_context(
 ) -> dict[str, Any]:
     context: dict[str, Any] = {
         "page": page,
+        "lang": getattr(page, "lang", "en-GB"),
+        "meta_description": getattr(page, "meta_description", ""),
+        "canonical_url": getattr(page, "canonical_url", ""),
+        "author_meta": getattr(page, "author_meta", ""),
+        "citation_date": getattr(page, "citation_date", ""),
+        "include_scripts": getattr(page, "include_scripts", True),
         "page_title": getattr(page, "title", "SK Design System"),
         "theme": getattr(page, "theme", "light"),
         "print_mode": getattr(page, "print_mode", "colour"),

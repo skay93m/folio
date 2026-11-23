@@ -9,6 +9,36 @@ from folio.bundle import build_release
 from folio.verifier import verify_target
 
 
+def test_playwright_scriptless_markdown_consumer(page: Page):
+    from dataclasses import replace
+
+    from folio import Reading, HomepageNoteItem, render_static
+    from folio.fixtures import build_homepage
+
+    reading = Reading(
+        eyebrow="Note", title="A clean article title", meta=(),
+        body_html='<p>Markdown prose with <a href="/source/">a source</a>.</p>',
+        include_scripts=False, author_meta="Sample Author", citation_date="2026-11-23",
+        meta_description="A short note", canonical_url="https://example.com/note/",
+    )
+    page.set_content(render_static(reading, extra_context={"page_title": "Note · Site"}))
+    assert page.locator(".sk-reading-body a").inner_text() == "a source"
+    assert page.locator(".abstract").count() == 0
+    assert page.locator(".reading-toc .eyebrow").count() == 0
+    assert page.locator("script").count() == 0
+    assert page.locator("html").get_attribute("lang") == "en-GB"
+    assert page.locator('meta[name="citation_title"]').get_attribute("content") == "A clean article title"
+    assert page.locator('meta[name="description"]').get_attribute("content") == "A short note"
+    assert page.locator('link[rel="canonical"]').get_attribute("href") == "https://example.com/note/"
+
+    homepage = replace(build_homepage(), include_scripts=False, long_form_notes=(
+        HomepageNoteItem("essay", "A longer essay", "23 November 2026", "Summary.", "/essay/"),
+    ))
+    page.set_content(render_static(homepage))
+    assert page.locator('.sk-section-list a[href="/essay/"]').inner_text() == "A longer essay"
+    assert page.locator("script").count() == 0
+
+
 def test_verifier_rejects_negative_static_and_overflow_fixtures(tmp_path: Path):
     # 1. JS template-literal backtick
     bad_js = tmp_path / "bad-js.html"
