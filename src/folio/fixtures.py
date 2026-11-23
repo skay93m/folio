@@ -417,7 +417,7 @@ def build_work_journal(
             JournalPreviewEntry(
                 scope="work",
                 cue="Evidence check",
-                text="Sample reflection scoped to this work item. Production persistence belongs to Placemat.",
+                text="Sample reflection scoped to this work item. Production persistence belongs to the consuming application.",
             ),
         ),
         home_href=hrefs.get("launchpad", "?page=launchpad"),

@@ -29,8 +29,19 @@
 
   <section class="sk-section-block">
     <h2>{{ page.long_form_heading }}</h2>
-    {% for para in page.long_form_paragraphs %}
-      <p>{{ para }}</p>
-    {% endfor %}
+    {% if page.long_form_notes %}
+      <div class="sk-section-list">
+        {% for note in page.long_form_notes %}
+          <div class="mb-3">
+            <div><a href="{{ note.href }}">{{ note.title }}</a> <span class="sk-meta-line">({{ note.date }})</span></div>
+            <div>{{ note.summary }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {% for para in page.long_form_paragraphs %}
+        <p>{{ para }}</p>
+      {% endfor %}
+    {% endif %}
   </section>
 </div>

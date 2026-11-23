@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="en" data-bs-theme="{{ theme|default:'light' }}" data-print-mode="{{ print_mode|default:'colour' }}">
+<html lang="{{ lang|default:'en-GB' }}" data-bs-theme="{{ theme|default:'light' }}" data-print-mode="{{ print_mode|default:'colour' }}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{{ page_title }}</title>
+    {% if meta_description %}<meta name="description" content="{{ meta_description }}" />{% endif %}
+    {% if author_meta %}
+      <meta name="author" content="{{ author_meta }}" />
+      <meta name="citation_author" content="{{ author_meta }}" />
+    {% endif %}
+    {% if author_meta or citation_date %}<meta name="citation_title" content="{{ page.title|default:page_title }}" />{% endif %}
+    {% if citation_date %}<meta name="citation_date" content="{{ citation_date }}" />{% endif %}
+    {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}" />{% endif %}
     <link href="{{ asset_urls.bootstrap_css }}" rel="stylesheet" />
     <link href="{{ asset_urls.sk_css }}" rel="stylesheet" />
   </head>
@@ -16,7 +24,9 @@
     {% if footer_copyright or footer_note %}
       {% include "folio/includes/footer.html" %}
     {% endif %}
-    <script src="{{ asset_urls.bootstrap_js }}"></script>
-    <script src="{{ asset_urls.folio_js }}"></script>
+    {% if include_scripts %}
+      <script src="{{ asset_urls.bootstrap_js }}"></script>
+      <script src="{{ asset_urls.folio_js }}"></script>
+    {% endif %}
   </body>
 </html>

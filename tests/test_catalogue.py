@@ -25,7 +25,7 @@ def test_primary_action_single_source_example_and_snippet():
     entry = get_catalogue_entry("primary-action")
     assert entry.group == "forms"
     assert entry.maturity == "Reference"
-    assert "folio==0.1.0" in entry.release_dependency
+    assert "folio==0.2.0" in entry.release_dependency
     assert entry.constraints
     assert "work-queues" in entry.used_in_patterns
 
@@ -58,8 +58,8 @@ def test_all_six_groups_and_seven_pattern_inventories_valid():
         "work-journal",
         "work-queues",
     }
-    assert "Placemat" in PATTERN_INVENTORIES["work-journal"].ownership_note
-    assert "Cockpit" in PATTERN_INVENTORIES["work-queues"].ownership_note
+    assert "the consuming application" in PATTERN_INVENTORIES["work-journal"].ownership_note
+    assert "Consuming application" in PATTERN_INVENTORIES["work-queues"].ownership_note
 
 
 def test_validate_catalogue_rejects_negative_fixtures():
@@ -80,7 +80,7 @@ def test_validate_catalogue_rejects_negative_fixtures():
         constraints=("None",),
         maturity="Reference",
         production_owner="Folio",
-        release_dependency="folio==0.1.0",
+        release_dependency="folio==0.2.0",
         template_name="folio/includes/elements/does_not_exist.html",
         python_usage="Launchpad(...)",
         used_in_patterns=("launchpad",),
@@ -97,7 +97,7 @@ def test_validate_catalogue_rejects_negative_fixtures():
         name="Launchpad",
         purpose="Choose one activity.",
         maturity="Reference",
-        ownership_note="Cockpit uses launchpad.",
+        ownership_note="Consuming application uses launchpad.",
         dataclass_path="folio.contracts.Launchpad",
         template_name="folio/patterns/launchpad.html",
         entry_ids=("non-existent-entry",),
@@ -114,7 +114,7 @@ def test_validate_catalogue_rejects_negative_fixtures():
         name="Launchpad",
         purpose="Choose one activity.",
         maturity="Reference",
-        ownership_note="Cockpit uses launchpad.",
+        ownership_note="Consuming application uses launchpad.",
         dataclass_path="folio.contracts.Launchpad",
         template_name="folio/patterns/launchpad.html",
         entry_ids=(),
