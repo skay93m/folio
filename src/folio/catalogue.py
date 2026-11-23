@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field, replace
 from importlib import import_module
 from typing import Any, Literal
 
@@ -574,18 +575,39 @@ def validate_catalogue(
         raise CatalogueValidationError("; ".join(errors))
 
 
+def _resolve_pattern_inventories(
+    pattern_keys: Iterable[PatternInventoryKey],
+    pattern_hrefs: Mapping[str, str] | None = None,
+) -> tuple[PatternInventory, ...]:
+    resolved: list[PatternInventory] = []
+    for key in pattern_keys:
+        pat = PATTERN_INVENTORIES[key]
+        if pattern_hrefs and key in pattern_hrefs:
+            resolved.append(replace(pat, gallery_href=pattern_hrefs[key]))
+        else:
+            resolved.append(pat)
+    return tuple(resolved)
+
+
 def _render_entry_record(
     entry: CatalogueEntry,
     *,
     detail_prefix: str = "/catalogue/",
+    pattern_hrefs: Mapping[str, str] | None = None,
 ) -> RenderedCatalogueEntry:
     html = render_entry_example(entry)
+    if not detail_prefix:
+        detail_href = f"{entry.id}.html"
+    elif detail_prefix.endswith("/"):
+        detail_href = f"{detail_prefix}{entry.id}/"
+    else:
+        detail_href = f"{detail_prefix}/{entry.id}.html"
     return RenderedCatalogueEntry(
         entry=entry,
         rendered_html=html,
         snippet=html,
-        detail_href=f"{detail_prefix}{entry.id}/" if detail_prefix.endswith("/") else f"{detail_prefix}/{entry.id}.html",
-        pattern_links=tuple(PATTERN_INVENTORIES[p] for p in entry.used_in_patterns),
+        detail_href=detail_href,
+        pattern_links=_resolve_pattern_inventories(entry.used_in_patterns, pattern_hrefs),
     )
 
 
@@ -594,14 +616,19 @@ def build_catalogue_page(
     theme: ThemeMode = "light",
     print_mode: PrintMode = "colour",
     detail_prefix: str = "/catalogue/",
-    pattern_hrefs: dict[str, str] | None = None,
+    home_href: str = "/?page=launchpad",
+    pattern_hrefs: Mapping[str, str] | None = None,
 ) -> CataloguePage:
     """Build the full CataloguePage from single-source entries and pattern inventories."""
     validate_catalogue()
     groups: list[CatalogueGroupView] = []
     for group_key, group_label in ELEMENT_GROUPS.items():
         group_entries = tuple(
-            _render_entry_record(entry, detail_prefix=detail_prefix)
+            _render_entry_record(
+                entry,
+                detail_prefix=detail_prefix,
+                pattern_hrefs=pattern_hrefs,
+            )
             for entry in CATALOGUE_ENTRIES
             if entry.group == group_key
         )
@@ -613,29 +640,13 @@ def build_catalogue_page(
             )
         )
 
-    patterns: list[PatternInventory] = []
-    for p in PATTERN_INVENTORIES.values():
-        href = pattern_hrefs[p.key] if pattern_hrefs and p.key in pattern_hrefs else p.gallery_href
-        patterns.append(
-            PatternInventory(
-                key=p.key,
-                name=p.name,
-                purpose=p.purpose,
-                maturity=p.maturity,
-                ownership_note=p.ownership_note,
-                dataclass_path=p.dataclass_path,
-                template_name=p.template_name,
-                entry_ids=p.entry_ids,
-                gallery_href=href,
-            )
-        )
-
     return CataloguePage(
         title="SK Design System Catalogue",
         eyebrow="Source-linked reuse catalogue",
         intro="Bootstrap 5 provides the structural vocabulary. Each entry below renders its live preview and markup snippet from one shared Django template partial.",
         groups=tuple(groups),
-        patterns=tuple(patterns),
+        patterns=_resolve_pattern_inventories(PATTERN_INVENTORIES.keys(), pattern_hrefs),
+        home_href=home_href,
         theme=theme,
         print_mode=print_mode,
     )
@@ -648,11 +659,17 @@ def build_catalogue_detail_page(
     print_mode: PrintMode = "colour",
     back_href: str = "/catalogue/",
     home_href: str = "/?page=launchpad",
+    detail_prefix: str = "/catalogue/",
+    pattern_hrefs: Mapping[str, str] | None = None,
 ) -> CatalogueDetailPage:
     """Build a focused detail page for a single catalogue entry."""
     validate_catalogue()
     entry = get_catalogue_entry(slug)
-    rendered = _render_entry_record(entry)
+    rendered = _render_entry_record(
+        entry,
+        detail_prefix=detail_prefix,
+        pattern_hrefs=pattern_hrefs,
+    )
     return CatalogueDetailPage(
         title=entry.title,
         eyebrow=f"Catalogue · {ELEMENT_GROUPS[entry.group]}",

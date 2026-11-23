@@ -1,5 +1,7 @@
 """Slice 3 tests: Single-source catalogue (#156, #157) and deterministic validation."""
 
+from pathlib import Path
+
 import pytest
 from django.template.loader import render_to_string
 from django.test import Client
@@ -10,6 +12,8 @@ from folio.catalogue import (
     CatalogueEntry,
     CatalogueValidationError,
     PatternInventory,
+    build_catalogue_detail_page,
+    build_catalogue_page,
     get_catalogue_entries,
     get_catalogue_entry,
     render_entry_example,
@@ -139,3 +143,81 @@ def test_catalogue_views_render_single_source_markup_and_snippet():
     assert "Primary action" in detail_body
     assert "&lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot;&gt;Review work&lt;/button&gt;" in detail_body
     assert '<button type="button" class="btn btn-primary">Review work</button>' in detail_body
+
+
+@pytest.mark.django_db
+def test_ten_colour_families_all_present_in_preview_and_snippet():
+    expected_families = (
+        "Coral",
+        "Teal",
+        "Gold",
+        "Blue",
+        "Slate",
+        "Violet",
+        "Rose",
+        "Cyan",
+        "Orange",
+        "Leaf",
+    )
+    entry = get_catalogue_entry("ten-colour-families")
+    rendered = render_entry_example(entry)
+    for family in expected_families:
+        assert f"palette-sample-{family.lower()}" in rendered
+        assert family in rendered
+
+    client = Client()
+    detail_resp = client.get("/catalogue/ten-colour-families/")
+    assert detail_resp.status_code == 200
+    detail_body = detail_resp.content.decode("utf-8")
+    for family in expected_families:
+        assert f"palette-sample-{family.lower()}" in detail_body
+        assert f"&lt;div class=&quot;palette-sample palette-sample-{family.lower()}&quot;&gt;{family}" in detail_body
+
+
+def test_catalogue_builders_accept_home_href_and_pattern_hrefs():
+    hrefs = {"search": "search.html", "work-journal": "work.html", "work-queues": "queue.html"}
+    cat_page = build_catalogue_page(detail_prefix="catalogue", home_href="index.html", pattern_hrefs=hrefs)
+    assert cat_page.home_href == "index.html"
+    detail_page = build_catalogue_detail_page(
+        "primary-action",
+        detail_prefix="",
+        back_href="../catalogue.html",
+        home_href="../index.html",
+        pattern_hrefs={k: f"../{v}" for k, v in hrefs.items()},
+    )
+    assert detail_page.home_href == "../index.html"
+    assert detail_page.rendered_entry.detail_href == "primary-action.html"
+    assert {p.gallery_href for p in detail_page.rendered_entry.pattern_links} == {
+        "../search.html",
+        "../work.html",
+        "../queue.html",
+    }
+
+
+def test_pattern_templates_include_shared_element_partials():
+    templates_dir = Path(__file__).resolve().parent.parent / "src" / "folio" / "templates" / "folio" / "patterns"
+    expected_includes = {
+        "launchpad.html": ("folio/includes/elements/status_badge.html",),
+        "dashboard.html": ("folio/includes/elements/status_badge.html",),
+        "search.html": (
+            "folio/includes/elements/labelled_input.html",
+            "folio/includes/elements/primary_action.html",
+            "folio/includes/elements/status_badge.html",
+            "folio/includes/elements/empty_state.html",
+        ),
+        "work_journal.html": (
+            "folio/includes/elements/labelled_input.html",
+            "folio/includes/elements/primary_action.html",
+            "folio/includes/elements/status_badge.html",
+        ),
+        "work_queue.html": (
+            "folio/includes/elements/labelled_input.html",
+            "folio/includes/elements/primary_action.html",
+            "folio/includes/elements/status_badge.html",
+            "folio/includes/elements/empty_state.html",
+        ),
+    }
+    for filename, partials in expected_includes.items():
+        source = (templates_dir / filename).read_text(encoding="utf-8")
+        for partial in partials:
+            assert partial in source, f"{filename} must include {partial}"

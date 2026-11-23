@@ -80,7 +80,7 @@
 
     {% if page.margin_notes %}
       {% for note in page.margin_notes %}
-        <p id="{{ note.footnote_id|default:'footnote-'|add:forloop.counter }}" class="article-footnote">{{ forloop.counter }}. {{ note.text }}</p>
+        <p id="{% if note.footnote_id %}{{ note.footnote_id }}{% else %}footnote-{{ forloop.counter }}{% endif %}" class="article-footnote">{{ forloop.counter }}. {{ note.text }}</p>
       {% endfor %}
     {% endif %}
 

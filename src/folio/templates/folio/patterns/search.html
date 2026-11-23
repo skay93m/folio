@@ -35,19 +35,38 @@
             {% endfor %}
           </div>
         </div>
-        <label class="visually-hidden" for="search-text">{{ page.search_aria_label }}</label>
-        <input class="form-control" id="search-text" value="{{ page.query }}" placeholder="{{ page.search_placeholder }}" />
+        {% include "folio/includes/elements/labelled_input.html" with input_id="search-text" label=page.search_aria_label label_class="visually-hidden" input_value=page.query placeholder=page.search_placeholder only %}
         <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
           <div class="eyebrow">Field filters</div>
           <button type="button" class="btn btn-sm btn-outline-secondary" id="add-filter">+ Add filter</button>
         </div>
-        <div id="filters"></div>
+        <div id="filters">
+          {% for f in page.active_filters %}
+            <div class="filter-row">
+              <select class="form-select filter-field" aria-label="Metadata field">
+                {% for facet in page.facets %}
+                  <option value="{{ facet.field }}"{% if facet.field == f.field %} selected{% endif %}>{{ facet.field }}</option>
+                {% endfor %}
+                {% if f.field not in page.facet_fields %}
+                  <option value="{{ f.field }}" selected>{{ f.field }}</option>
+                {% endif %}
+              </select>
+              <select class="form-select filter-operator" aria-label="Comparison operator">
+                <option value="equals"{% if f.operator == "equals" %} selected{% endif %}>equals</option>
+                <option value="contains"{% if f.operator == "contains" %} selected{% endif %}>contains</option>
+                <option value="not"{% if f.operator == "not" %} selected{% endif %}>is not</option>
+              </select>
+              <input class="form-control filter-value" aria-label="Filter value" placeholder="Value to match" value="{{ f.value }}" />
+              <button type="button" class="filter-remove" aria-label="Remove filter">&times;</button>
+            </div>
+          {% endfor %}
+        </div>
         <template id="filter-row-template">
           <div class="filter-row">
             <select class="form-select filter-field" aria-label="Metadata field">
-              <option value="type">type</option>
-              <option value="topic">topic</option>
-              <option value="status">status</option>
+              {% for facet in page.facets %}
+                <option value="{{ facet.field }}">{{ facet.field }}</option>
+              {% endfor %}
             </select>
             <select class="form-select filter-operator" aria-label="Comparison operator">
               <option value="equals">equals</option>
@@ -60,14 +79,14 @@
         </template>
         <div class="search-actions">
           <button type="button" class="btn btn-link" id="clear-search">Clear</button>
-          <button type="button" class="btn btn-primary" id="run-search">Search</button>
+          {% include "folio/includes/elements/primary_action.html" with label="Search" button_id="run-search" only %}
         </div>
       </section>
 
       <section class="surface result-list">
         <div class="result-head">
           <h2>Results</h2>
-          <span class="subtle" id="result-count" role="status">{{ page.records|length }} notes in this sample</span>
+          <span class="subtle" id="result-count" role="status">{{ page.records|length }} {{ page.selected_mode|lower }} in this sample</span>
         </div>
         <div id="search-results">
           {% for record in page.records %}
@@ -77,14 +96,11 @@
               <div class="result-meta">
                 <span>{{ record.record_type }}</span>
                 <span>{{ record.topic }}</span>
-                <span class="status status-{{ record.status_role }}">{{ record.status }}</span>
+                {% include "folio/includes/elements/status_badge.html" with status_label=record.status status_role=record.status_role only %}
               </div>
             </a>
           {% endfor %}
-          <div id="search-empty" class="empty" hidden>
-            <h3>No matching records.</h3>
-            <p class="small">Try fewer filters or another search term. Sample records only.</p>
-          </div>
+          {% include "folio/includes/elements/empty_state.html" with empty_id="search-empty" wrapper_class="empty" empty_heading="No matching records." empty_body="Try fewer filters or another search term. Sample records only." empty_body_class="small" is_hidden=True only %}
         </div>
       </section>
     </div>

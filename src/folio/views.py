@@ -6,7 +6,8 @@ from django.http import Http404, HttpRequest, HttpResponse
 
 from folio.catalogue import build_catalogue_detail_page, build_catalogue_page
 from folio.contracts import PrintMode, ThemeMode
-from folio.fixtures import PATTERN_KEYS, PATTERN_LABELS, get_pattern_page
+from folio.fixtures import get_pattern_page
+from folio.navigation import PATTERN_KEYS, build_gallery_nav, resolve_pattern_key
 from folio.renderer import render
 
 
@@ -21,27 +22,12 @@ def _parse_theme_and_print(request: HttpRequest) -> tuple[ThemeMode, PrintMode]:
 
 
 def _gallery_nav(active_key: str, theme: ThemeMode) -> dict[str, object]:
-    links = [
-        {
-            "key": key,
-            "label": label,
-            "href": f"/?page={key}&theme={theme}",
-            "active": key == active_key,
-        }
-        for key, label in PATTERN_LABELS
-    ]
-    links.append(
-        {
-            "key": "elements",
-            "label": "Design-system elements",
-            "href": f"/?page=elements&theme={theme}",
-            "active": active_key == "elements",
-        }
+    hrefs = {key: f"/?page={key}&theme={theme}" for key in (*PATTERN_KEYS, "elements")}
+    return build_gallery_nav(
+        active_key,
+        hrefs=hrefs,
+        catalogue_href=f"/catalogue/?theme={theme}",
     )
-    return {
-        "catalogue_href": f"/catalogue/?theme={theme}",
-        "pattern_links": links,
-    }
 
 
 def gallery_view(request: HttpRequest) -> HttpResponse:
@@ -60,8 +46,7 @@ def gallery_view(request: HttpRequest) -> HttpResponse:
             },
         )
 
-    alias = "work" if raw_page == "writing" else ("search" if raw_page == "index" else raw_page)
-    key = alias if alias in PATTERN_KEYS else "launchpad"
+    key = resolve_pattern_key(raw_page, default="launchpad")
     page = get_pattern_page(key, theme=theme, print_mode=print_mode)
     extra = {}
     if not getattr(page, "is_stage1_shell", False):

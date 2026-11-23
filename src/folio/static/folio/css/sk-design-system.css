@@ -393,14 +393,14 @@ p {
 .status-success,
 .status-completed {
   border-color: var(--sk-green);
-  color: var(--sk-green);
+  color: var(--sk-ink);
   background: var(--sk-family-teal-surface);
 }
 
 .status-warning,
 .status-waiting {
   border-color: var(--sk-warning);
-  color: var(--sk-warning);
+  color: var(--sk-ink);
   background: var(--sk-family-gold-surface);
 }
 

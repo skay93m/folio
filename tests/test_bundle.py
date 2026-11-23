@@ -55,6 +55,22 @@ def test_build_release_writes_deterministic_manifest_and_assets(tmp_path: Path):
     assert 'href="assets/css/sk-design-system.css"' in homepage_html
     assert 'href="/static/' not in homepage_html
 
+    for cat_file in ("catalogue.html", "elements.html"):
+        cat_html = (out1 / cat_file).read_text(encoding="utf-8")
+        assert 'class="sk-logo" href="index.html"' in cat_html
+        assert "/?page=launchpad" not in cat_html
+
+    detail_html = (out1 / "catalogue/primary-action.html").read_text(encoding="utf-8")
+    assert 'class="sk-logo" href="../index.html"' in detail_html
+    assert 'href="../search.html"' in detail_html
+    assert 'href="../work.html"' in detail_html
+    assert 'href="../queue.html"' in detail_html
+    assert "/?page=" not in detail_html
+
+    reading_html = (out1 / "reading.html").read_text(encoding="utf-8")
+    assert 'id="" class="article-footnote"' not in reading_html
+    assert 'id="footnote-1" class="article-footnote"' in reading_html
+
 
 def test_build_release_preserves_prior_output_on_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     out = tmp_path / "dist"

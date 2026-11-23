@@ -261,10 +261,22 @@
   var filtersContainer = document.querySelector("#filters");
   var filterRowTemplate = document.querySelector("#filter-row-template");
   if (searchText && filtersContainer) {
-    var activeMode = "Notes";
+    var firstModeBtn = document.querySelector("[data-search-mode]");
+    var defaultMode = firstModeBtn ? firstModeBtn.getAttribute("data-search-mode") || "Notes" : "Notes";
+    var activeMode = defaultMode;
     var activeTab = document.querySelector('[data-search-mode][aria-pressed="true"]');
     if (activeTab) {
-      activeMode = activeTab.getAttribute("data-search-mode") || "Notes";
+      activeMode = activeTab.getAttribute("data-search-mode") || defaultMode;
+    }
+
+    function bindFilterRow(row) {
+      var removeBtn = row.querySelector(".filter-remove");
+      if (removeBtn) {
+        removeBtn.addEventListener("click", function () {
+          row.remove();
+          runSearchFilter();
+        });
+      }
     }
 
     function addFilterRow(field, value) {
@@ -273,15 +285,9 @@
       var row = clone.querySelector(".filter-row");
       var fieldSelect = row.querySelector(".filter-field");
       var valueInput = row.querySelector(".filter-value");
-      var removeBtn = row.querySelector(".filter-remove");
       if (fieldSelect && field) fieldSelect.value = field;
       if (valueInput && value) valueInput.value = value;
-      if (removeBtn) {
-        removeBtn.addEventListener("click", function () {
-          row.remove();
-          runSearchFilter();
-        });
-      }
+      bindFilterRow(row);
       filtersContainer.appendChild(clone);
     }
 
@@ -298,7 +304,7 @@
       var items = Array.prototype.slice.call(document.querySelectorAll("#search-results .search-result"));
       var visibleCount = 0;
       items.forEach(function (item) {
-        var matchesMode = activeMode === "Notes";
+        var matchesMode = activeMode === defaultMode;
         var title = (item.getAttribute("data-title") || "").toLowerCase();
         var excerpt = (item.getAttribute("data-text") || "").toLowerCase();
         var matchesQuery = !query || title.indexOf(query) !== -1 || excerpt.indexOf(query) !== -1;
@@ -323,10 +329,15 @@
       }
     }
 
+    filtersContainer.querySelectorAll(".filter-row").forEach(bindFilterRow);
+
     var addFilterBtn = document.querySelector("#add-filter");
     if (addFilterBtn) {
       addFilterBtn.addEventListener("click", function () {
-        addFilterRow("type", "");
+        var firstOpt = filterRowTemplate
+          ? filterRowTemplate.content.querySelector(".filter-field option")
+          : null;
+        addFilterRow(firstOpt ? firstOpt.value : "", "");
       });
     }
     var runSearchBtn = document.querySelector("#run-search");
@@ -357,13 +368,25 @@
     });
     document.querySelectorAll("[data-search-mode]").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        activeMode = btn.getAttribute("data-search-mode") || "Notes";
+        activeMode = btn.getAttribute("data-search-mode") || defaultMode;
         document.querySelectorAll("[data-search-mode]").forEach(function (tab) {
           tab.setAttribute("aria-pressed", String(tab === btn));
         });
         runSearchFilter();
       });
     });
+
+    function runInitialSearchIfNeeded() {
+      var hasActiveFilters = filtersContainer.querySelectorAll(".filter-row").length > 0;
+      if (searchText.value.trim() !== "" || activeMode !== defaultMode || hasActiveFilters) {
+        runSearchFilter();
+      }
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", runInitialSearchIfNeeded);
+    } else {
+      runInitialSearchIfNeeded();
+    }
   }
 
   // 7. Work with journal preview

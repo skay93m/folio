@@ -197,6 +197,7 @@ class Homepage:
         require_non_empty(self.socials_aria_label, "Homepage.socials_aria_label")
         validate_theme(self.theme)
         validate_print_mode(self.print_mode)
+        forbid_faux_serif_tags(self.notes_intro, "Homepage.notes_intro")
         for idx, para in enumerate(self.statement_paragraphs):
             forbid_faux_serif_tags(para, f"Homepage.statement_paragraphs[{idx}]")
         for idx, para in enumerate(self.now_paragraphs):
@@ -513,6 +514,10 @@ class SearchIndex:
     pattern_key: str = "search"
     partial_template: str = "folio/patterns/search.html"
 
+    @property
+    def facet_fields(self) -> tuple[str, ...]:
+        return tuple(facet.field for facet in self.facets)
+
     def __post_init__(self) -> None:
         require_sentence_case(self.title, "SearchIndex.title")
         require_non_empty(self.intro, "SearchIndex.intro")
@@ -584,6 +589,10 @@ class WorkJournal:
 
     pattern_key: str = "work"
     partial_template: str = "folio/patterns/work_journal.html"
+
+    @property
+    def work_entries_count(self) -> int:
+        return sum(1 for entry in self.entries if entry.scope == "work")
 
     def __post_init__(self) -> None:
         require_sentence_case(self.title, "WorkJournal.title")
@@ -681,6 +690,20 @@ class WorkQueue:
             if row.queue in counts and row.status != "Completed":
                 counts[row.queue] += 1
         return counts
+
+    @property
+    def category_tabs(self) -> tuple[tuple[QueueCategory, int], ...]:
+        counts = self.category_counts
+        return tuple((cat, counts.get(cat.key, 0)) for cat in self.categories)
+
+    @property
+    def row_entries(self) -> tuple[tuple[QueueRow, str], ...]:
+        names = {cat.key: cat.name for cat in self.categories}
+        return tuple((row, names.get(row.queue, row.queue)) for row in self.rows)
+
+    @property
+    def selected_outstanding_count(self) -> int:
+        return self.category_counts.get(self.selected_category, 0)
 
     def __post_init__(self) -> None:
         require_sentence_case(self.title, "WorkQueue.title")

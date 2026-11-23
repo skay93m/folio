@@ -33,25 +33,7 @@ from folio.contracts import (
     WorkStep,
 )
 
-PATTERN_KEYS: tuple[str, ...] = (
-    "launchpad",
-    "homepage",
-    "reading",
-    "dashboard",
-    "search",
-    "work",
-    "queue",
-)
-
-PATTERN_LABELS: tuple[tuple[str, str], ...] = (
-    ("launchpad", "Launchpad"),
-    ("homepage", "Homepage · Stage 1"),
-    ("reading", "Reading page"),
-    ("dashboard", "Dashboard"),
-    ("search", "Index / search"),
-    ("work", "Work with journal"),
-    ("queue", "Work queues"),
-)
+from folio.navigation import PATTERN_KEYS, PATTERN_LABELS, resolve_pattern_key
 
 
 def build_launchpad(
@@ -577,8 +559,6 @@ def get_pattern_page(
     page_hrefs: dict[str, str] | None = None,
 ) -> Any:
     """Return the Git-tracked sample page dataclass for one of the 7 patterns."""
-    alias = "work" if key == "writing" else ("search" if key == "index" else key)
-    builder = _BUILDERS.get(alias)
-    if builder is None:
-        raise KeyError(f"Unknown Folio pattern key: {key!r}")
+    alias = resolve_pattern_key(key)
+    builder = _BUILDERS[alias]
     return builder(theme=theme, print_mode=print_mode, page_hrefs=page_hrefs)

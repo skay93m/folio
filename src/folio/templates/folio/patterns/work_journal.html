@@ -10,8 +10,7 @@
         <span class="badge" id="scope-label" data-work-label="{{ page.work_scope_label }}" data-general-label="{{ page.general_scope_label }}">{{ page.work_scope_label }}</span>
         <button type="button" id="switch-scope">Switch to General</button>
       </div>
-      <label class="visually-hidden" for="journal-cue">Optional cue</label>
-      <input class="form-control" id="journal-cue" placeholder="Optional cue or question" />
+      {% include "folio/includes/elements/labelled_input.html" with input_id="journal-cue" label="Optional cue" label_class="visually-hidden" placeholder="Optional cue or question" only %}
       <label for="journal-text">Reflection</label>
       <textarea class="form-control" id="journal-text" placeholder="Capture a thought, insight or note from this work…"></textarea>
       <div class="journal-actions">
@@ -20,14 +19,14 @@
           <span>Use plain text and headings.</span>
         </details>
         <button type="button" class="btn btn-link" id="journal-discard">Discard draft</button>
-        <button type="button" class="btn btn-primary" id="journal-add">Add ⌘↵</button>
+        {% include "folio/includes/elements/primary_action.html" with label="Add ⌘↵" button_id="journal-add" only %}
       </div>
       <p class="subtle mt-2 mb-0" id="journal-feedback" role="status">{{ page.preview_notice }}</p>
     </div>
 
     <div class="journal-filters">
       <button type="button" data-journal-view="all" aria-pressed="true">All today (<span id="all-count">{{ page.entries|length }}</span>)</button>
-      <button type="button" data-journal-view="work" aria-pressed="false">This work (<span id="work-count">{{ page.entries|length }}</span>)</button>
+      <button type="button" data-journal-view="work" aria-pressed="false">This work (<span id="work-count">{{ page.work_entries_count }}</span>)</button>
     </div>
 
     <div id="journal-list">
@@ -57,7 +56,7 @@
 
     <div class="d-flex gap-2 mb-4 flex-wrap">
       {% for label, role in page.status_badges %}
-        <span class="status status-{{ role }}">{{ label }}</span>
+        {% include "folio/includes/elements/status_badge.html" with status_label=label status_role=role only %}
       {% endfor %}
     </div>
 

@@ -1,5 +1,6 @@
-<div>
+{% if input_id %}<label class="{{ label_class|default:'form-label' }}" for="{{ input_id }}">{{ label }}</label>
+<input class="form-control" id="{{ input_id }}"{% if input_value %} value="{{ input_value }}"{% endif %}{% if aria_describedby %} aria-describedby="{{ aria_describedby }}"{% endif %} placeholder="{{ placeholder }}" />{% if help_text %}<div class="form-text" id="{{ aria_describedby }}">{{ help_text }}</div>{% endif %}{% else %}<div>
   <label class="form-label" for="record-title">Record title</label>
   <input class="form-control" id="record-title" aria-describedby="record-title-help" placeholder="A concise title" />
   <div class="form-text" id="record-title-help">Describe the subject in a few words.</div>
-</div>
+</div>{% endif %}

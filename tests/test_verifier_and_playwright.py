@@ -59,6 +59,50 @@ def test_verifier_rejects_negative_static_and_overflow_fixtures(tmp_path: Path):
     assert not res_overflow.passed
     assert any("overflow" in err.lower() for err in res_overflow.errors)
 
+    # 5. External directory .js file containing template-literal backtick
+    ext_dir = tmp_path / "ext-site"
+    ext_dir.mkdir()
+    (ext_dir / "app.js").write_text("const greeting = `hello ${name}`;\n", encoding="utf-8")
+    (ext_dir / "index.html").write_text(
+        '<!doctype html><html lang="en"><body><script src="app.js"></script></body></html>',
+        encoding="utf-8",
+    )
+    res_ext_js = verify_target(ext_dir, run_playwright=False, check_catalogue=False)
+    assert not res_ext_js.passed
+    assert any("backtick" in err.lower() for err in res_ext_js.errors)
+
+    # 6. Low-contrast status badge caught by WCAG 2.2 AA check
+    bad_contrast = tmp_path / "bad-contrast.html"
+    bad_contrast.write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        "<style>"
+        ":root { --sk-paper: #f7f6f2; }"
+        "body { background: #f7f6f2; color: #34344a; font-family: 'IBM Plex Sans', sans-serif; }"
+        ".status-success { background: #d8f3ec; color: #90d8c8; padding: 4px 8px; display: inline-block; }"
+        "</style></head><body>"
+        '<a href="#main">Skip</a><button type="button">Action</button>'
+        '<span class="status-success">Low contrast</span>'
+        "</body></html>",
+        encoding="utf-8",
+    )
+    res_contrast = verify_target(bad_contrast, run_playwright=True, check_catalogue=False)
+    assert not res_contrast.passed
+    assert any("wcag aa contrast" in err.lower() for err in res_contrast.errors)
+
+    # 7. SK page without focusable visible interactive control caught by keyboard check
+    bad_focus = tmp_path / "bad-focus.html"
+    bad_focus.write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        "<style>"
+        ":root { --sk-paper: #f7f6f2; }"
+        "body { background: #f7f6f2; color: #34344a; font-family: 'IBM Plex Sans', sans-serif; }"
+        "</style></head><body><main><p>No controls here</p></main></body></html>",
+        encoding="utf-8",
+    )
+    res_focus = verify_target(bad_focus, run_playwright=True, check_catalogue=False)
+    assert not res_focus.passed
+    assert any("body/document" in err.lower() or "interactive control" in err.lower() for err in res_focus.errors)
+
 
 def test_verifier_passes_on_built_dist_and_live_server(tmp_path: Path, live_server):
     dist_dir = tmp_path / "dist"
@@ -127,11 +171,17 @@ def test_playwright_all_seven_patterns_interactions_and_print(page: Page, live_s
     page.click("#journal-add")
     assert page.locator("#all-count").inner_text() == "2"
 
-    # 7. Work queues arrival & completion
+    # 7. Work queues arrival, completion, and consistent #ticket-code
     page.goto(f"{live_server.url}/?page=queue")
     initial_count = int(page.locator('.queue-tab[data-queue="housekeeping"] .count-pill').inner_text())
+    page.locator(".ticket-link").first.click()
+    assert "Daily housekeeping" in page.locator("#ticket-code").inner_text()
+    page.click("#ticket-close")
     page.click("#simulate-arrival")
     assert int(page.locator('.queue-tab[data-queue="housekeeping"] .count-pill').inner_text()) == initial_count + 1
+    page.locator(".ticket-link").last.click()
+    assert "Daily housekeeping" in page.locator("#ticket-code").inner_text()
+    page.click("#ticket-close")
     page.locator(".ticket-link").first.click()
     page.click("#ticket-complete")
     assert int(page.locator('.queue-tab[data-queue="housekeeping"] .count-pill').inner_text()) == initial_count
@@ -147,3 +197,99 @@ def test_playwright_all_seven_patterns_interactions_and_print(page: Page, live_s
     assert btn.evaluate("el => getComputedStyle(el).outlineStyle") != "none"
     page.set_viewport_size({"width": 390, "height": 844})
     assert page.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth")
+
+
+def test_playwright_homepage_d1_dark_theme_and_search_initial_filter(page: Page, live_server, tmp_path: Path):
+    # 1. Homepage rendered in D1 Dark (?page=homepage&theme=dark)
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(f"{live_server.url}/?page=homepage&theme=dark")
+    page.wait_for_function("() => document.fonts.ready")
+    assert page.evaluate("() => document.documentElement.dataset.bsTheme") == "dark"
+    assert page.evaluate("() => getComputedStyle(document.body).backgroundColor") == "rgb(23, 25, 28)"
+    assert page.evaluate("() => getComputedStyle(document.body).color") == "rgb(238, 240, 242)"
+
+    contrasts = page.evaluate(
+        """() => {
+            function parseColor(str) {
+                const m = str && str.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/);
+                return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+            }
+            function lum(rgb) {
+                const c = rgb.map(v => {
+                    const s = v / 255;
+                    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+                });
+                return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+            }
+            function ratio(fgStr, bgStr) {
+                const l1 = lum(parseColor(fgStr));
+                const l2 = lum(parseColor(bgStr));
+                return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+            }
+            const bg = getComputedStyle(document.body).backgroundColor;
+            return {
+                body: ratio(getComputedStyle(document.body).color, bg),
+                heading: ratio(getComputedStyle(document.querySelector('h2')).color, bg),
+                muted: ratio(getComputedStyle(document.querySelector('.sk-meta-line')).color, bg),
+                link: ratio(getComputedStyle(document.querySelector('.sk-section-list a')).color, bg),
+            };
+        }"""
+    )
+    for role, val in contrasts.items():
+        assert val >= 4.5, f"D1 Dark Homepage {role} contrast {val:.2f} < 4.5"
+
+    page.set_viewport_size({"width": 390, "height": 844})
+    assert page.evaluate("() => document.documentElement.scrollWidth <= window.innerWidth")
+
+    # 2. SearchIndex with initial query & active_filters invokes runSearchFilter() on load
+    import shutil
+    from folio import render_static
+    from folio.bundle import STATIC_SOURCE_DIR
+    from folio.contracts import SearchFilter, SearchIndex
+    from folio.fixtures import build_search
+
+    base_search = build_search()
+    prefilled = SearchIndex(
+        eyebrow=base_search.eyebrow,
+        title=base_search.title,
+        intro=base_search.intro,
+        facets=base_search.facets,
+        modes=base_search.modes,
+        selected_mode="Notes",
+        records=base_search.records,
+        active_filters=(SearchFilter("topic", "equals", "Housekeeping"),),
+        query="queue",
+    )
+    search_dir = tmp_path / "search-init"
+    search_dir.mkdir()
+    shutil.copytree(STATIC_SOURCE_DIR, search_dir / "assets")
+    (search_dir / "index.html").write_text(
+        render_static(prefilled, static_prefix="assets/"),
+        encoding="utf-8",
+    )
+    obs_mode = SearchIndex(
+        eyebrow=base_search.eyebrow,
+        title=base_search.title,
+        intro=base_search.intro,
+        facets=base_search.facets,
+        modes=base_search.modes,
+        selected_mode="Observations",
+        records=base_search.records,
+    )
+    (search_dir / "obs.html").write_text(
+        render_static(obs_mode, static_prefix="assets/"),
+        encoding="utf-8",
+    )
+    from folio.verifier import _serve_directory
+
+    server, base_url = _serve_directory(search_dir)
+    try:
+        page.set_viewport_size({"width": 1280, "height": 800})
+        page.goto(f"{base_url}/index.html")
+        assert "1 notes in this sample" in page.locator("#result-count").inner_text()
+        page.goto(f"{base_url}/obs.html")
+        assert "0 observations in this sample" in page.locator("#result-count").inner_text()
+        assert page.locator("#search-empty").is_visible()
+    finally:
+        server.shutdown()
+        server.server_close()

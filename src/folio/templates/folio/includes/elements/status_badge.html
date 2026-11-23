@@ -1,7 +1,7 @@
-<div class="demo-row">
+{% if status_label %}<span class="status status-{{ status_role|default:'neutral' }}"{% if badge_id %} id="{{ badge_id }}"{% endif %}>{{ status_label }}</span>{% else %}<div class="demo-row">
   <span class="status status-info">Ready 3</span>
   <span class="status status-warning">Waiting 2</span>
   <span class="status status-success">Completed</span>
   <span class="status status-error">Blocked</span>
   <span class="status status-neutral">Neutral</span>
-</div>
+</div>{% endif %}
