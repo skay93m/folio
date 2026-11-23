@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" data-bs-theme="{{ theme|default:'light' }}" data-print-mode="{{ print_mode|default:'colour' }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{ page_title }}</title>
+    <link href="{{ asset_urls.bootstrap_css }}" rel="stylesheet" />
+    <link href="{{ asset_urls.sk_css }}" rel="stylesheet" />
+  </head>
+  <body{% if body_classes %} class="{{ body_classes }}"{% endif %}>
+    <a class="visually-hidden-focusable skip" href="#main">Skip to content</a>
+    {% include "folio/includes/header.html" %}
+    <main id="main" tabindex="-1">
+      {% include partial_template %}
+    </main>
+    {% if footer_copyright or footer_note %}
+      {% include "folio/includes/footer.html" %}
+    {% endif %}
+    <script src="{{ asset_urls.bootstrap_js }}"></script>
+    <script src="{{ asset_urls.folio_js }}"></script>
+  </body>
+</html>

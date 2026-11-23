@@ -1,0 +1,101 @@
+<div class="page-shell">
+  <div class="page-head">
+    <div class="eyebrow">{{ page.eyebrow }}</div>
+    <h1>{{ page.title }}</h1>
+    <p>{{ page.intro }}</p>
+  </div>
+
+  <div class="catalogue-grid">
+    <nav class="catalogue-nav" aria-label="Element categories">
+      {% for group in page.groups %}
+        <a href="#group-{{ group.key }}">{{ group.label }}</a>
+      {% endfor %}
+      <a href="#pattern-inventories">Page pattern inventories</a>
+    </nav>
+
+    <div>
+      {% for group in page.groups %}
+        <section id="group-{{ group.key }}" class="catalogue-section">
+          <div class="d-flex justify-content-between align-items-center gap-3">
+            <h2>{{ group.label }}</h2>
+            <span class="activation base">{{ group.entries|length }} entries</span>
+          </div>
+
+          {% for item in group.entries %}
+            <article id="entry-{{ item.entry.id }}" class="catalogue-entry-card">
+              <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                <div>
+                  <div class="eyebrow">{{ item.entry.id }}</div>
+                  <h3 class="mt-1 mb-1">
+                    <a href="{{ item.detail_href }}">{{ item.entry.title }}</a>
+                  </h3>
+                </div>
+                <span class="status status-neutral">{{ item.entry.maturity }}</span>
+              </div>
+
+              <p class="pattern-description mt-2">{{ item.entry.purpose }}</p>
+
+              <div class="catalogue-meta-grid">
+                <div><strong>Release:</strong> <code>{{ item.entry.release_dependency }}</code></div>
+                <div><strong>Owner:</strong> {{ item.entry.production_owner }}</div>
+                <div><strong>Template:</strong> <code>{{ item.entry.template_name }}</code></div>
+              </div>
+
+              <div class="catalogue-preview" aria-label="Live example for {{ item.entry.title }}">
+                {{ item.rendered_html|safe }}
+              </div>
+
+              <details>
+                <summary class="subtle">Reusable markup &amp; Python contract</summary>
+                <pre class="mt-2"><code>{{ item.snippet }}</code></pre>
+                <pre class="mt-2"><code>{{ item.entry.python_usage }}</code></pre>
+                <ul class="small mt-2">
+                  {% for constraint in item.entry.constraints %}
+                    <li>{{ constraint }}</li>
+                  {% endfor %}
+                </ul>
+                <p class="small mb-0">
+                  <strong>Used in patterns:</strong>
+                  {% for pat in item.pattern_links %}
+                    <a href="#pattern-{{ pat.key }}">{{ pat.name }}</a>{% if not forloop.last %}, {% endif %}
+                  {% endfor %}
+                </p>
+              </details>
+            </article>
+          {% endfor %}
+        </section>
+      {% endfor %}
+
+      <section id="pattern-inventories" class="catalogue-section">
+        <h2>Page pattern inventories</h2>
+        <p class="pattern-description">All seven reference patterns linked to their typed contracts, templates, ownership notes, and registered element entries.</p>
+        {% for pattern in page.patterns %}
+          <article id="pattern-{{ pattern.key }}" class="catalogue-entry-card">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+              <div>
+                <div class="eyebrow">{{ pattern.key }}</div>
+                <h3 class="mt-1 mb-1">
+                  <a href="{{ pattern.gallery_href }}">{{ pattern.name }}</a>
+                </h3>
+              </div>
+              <span class="status status-neutral">{{ pattern.maturity }}</span>
+            </div>
+            <p class="pattern-description mt-2">{{ pattern.purpose }}</p>
+            <p class="small text-body-secondary mb-2">{{ pattern.ownership_note }}</p>
+            <div class="catalogue-meta-grid">
+              <div><strong>Contract:</strong> <code>{{ pattern.dataclass_path }}</code></div>
+              <div><strong>Template:</strong> <code>{{ pattern.template_name }}</code></div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              {% for eid in pattern.entry_ids %}
+                <a class="status status-info text-decoration-none" href="#entry-{{ eid }}">{{ eid }}</a>
+              {% endfor %}
+            </div>
+          </article>
+        {% endfor %}
+      </section>
+
+      <div id="demo-status" class="visually-hidden" role="status"></div>
+    </div>
+  </div>
+</div>

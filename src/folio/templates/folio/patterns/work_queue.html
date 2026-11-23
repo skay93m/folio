@@ -1,0 +1,129 @@
+<div class="page-shell">
+  <div class="page-head">
+    <div class="eyebrow">{{ page.eyebrow }}</div>
+    <h1>{{ page.title }}</h1>
+    <p>{{ page.intro }}</p>
+  </div>
+
+  <div class="queue-layout">
+    <aside class="queue-nav" aria-label="{{ page.nav_aria_label }}">
+      <h2>Queues</h2>
+      <div class="queue-tabs" id="queue-tabs">
+        {% for cat in page.categories %}
+          <button type="button" class="queue-tab" data-queue="{{ cat.key }}" data-queue-name="{{ cat.name }}" data-queue-description="{{ cat.description }}" aria-pressed="{% if cat.key == page.selected_category %}true{% else %}false{% endif %}">
+            <span>{{ cat.name }}</span>
+            <span class="count-pill" aria-label="Outstanding items">0</span>
+          </button>
+        {% endfor %}
+      </div>
+      <small>Counts show outstanding work, including items waiting for a prerequisite.</small>
+      {% if page.cockpit_scope_note %}
+        <small>{{ page.cockpit_scope_note }}</small>
+      {% endif %}
+    </aside>
+
+    <section class="queue-main">
+      <div class="section-title">
+        <div>
+          <h2 id="queue-title">{{ page.active_category.name }}</h2>
+          <p class="subtle mb-0 mt-2" id="queue-description">{{ page.active_category.description }}</p>
+        </div>
+      </div>
+
+      <div class="queue-toolbar">
+        <label class="visually-hidden" for="queue-search">{{ page.search_aria_label }}</label>
+        <input class="form-control" id="queue-search" placeholder="Search this queue" />
+        <label class="visually-hidden" for="queue-status">{{ page.status_aria_label }}</label>
+        <select class="form-select" id="queue-status">
+          <option value="Outstanding">Outstanding</option>
+          <option value="Ready">Ready</option>
+          <option value="Waiting">Waiting</option>
+          <option value="Completed">Completed</option>
+          <option value="All">All</option>
+        </select>
+        <button type="button" class="btn btn-outline-secondary" id="simulate-arrival">+ Sample arrival</button>
+      </div>
+
+      <div class="queue-table table-responsive">
+        <table class="table table-hover mb-0">
+          <caption class="visually-hidden">{{ page.table_caption }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Reference</th>
+              <th scope="col">Work item</th>
+              <th scope="col">Priority</th>
+              <th scope="col">Status</th>
+              <th scope="col">Owner</th>
+              <th scope="col">Age</th>
+            </tr>
+          </thead>
+          <tbody id="queue-rows">
+            {% for row in page.rows %}
+              <tr data-queue="{{ row.queue }}" data-queue-name="{{ row.queue }}" data-id="{{ row.id }}" data-title="{{ row.title }}" data-status="{{ row.status }}" data-priority="{{ row.priority }}" data-owner="{{ row.owner }}" data-age="{{ row.age }}" data-context="{{ row.context }}" data-note="{{ row.note }}">
+                <td class="subtle ticket-reference">{{ row.id }}</td>
+                <td class="ticket-subject">
+                  <button type="button" class="ticket-link" data-ticket="{{ row.id }}">{{ row.title }}</button>
+                </td>
+                <td><span class="priority{% if row.priority == 'High' %} high{% endif %}">{{ row.priority }}</span></td>
+                <td><span class="status status-{{ row.status_role }}">{{ row.status }}</span></td>
+                <td class="subtle">{{ row.owner }}</td>
+                <td class="subtle text-nowrap">{{ row.age }}</td>
+              </tr>
+            {% endfor %}
+            <tr id="queue-empty-row" hidden>
+              <td colspan="6">
+                <div class="empty">
+                  <h3>No items in this view.</h3>
+                  <p class="small mb-0">Try a different status or search term.</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <template id="queue-row-template">
+        <tr data-queue="" data-queue-name="" data-id="" data-title="" data-status="Ready" data-priority="Normal" data-owner="Unassigned" data-age="Just now" data-context="" data-note="">
+          <td class="subtle ticket-reference"></td>
+          <td class="ticket-subject">
+            <button type="button" class="ticket-link" data-ticket=""></button>
+          </td>
+          <td><span class="priority">Normal</span></td>
+          <td><span class="status status-info">Ready</span></td>
+          <td class="subtle">Unassigned</td>
+          <td class="subtle text-nowrap">Just now</td>
+        </tr>
+      </template>
+
+      <div class="queue-footer">
+        <span id="queue-count" role="status"></span>
+        <span>Sample records · Open a title to inspect the work</span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<dialog id="ticket-dialog" class="sk-dialog ticket-dialog">
+  <div class="d-flex justify-content-between align-items-start gap-3">
+    <div>
+      <div class="eyebrow" id="ticket-code"></div>
+      <h2 id="ticket-title"></h2>
+    </div>
+    <button type="button" class="btn-close" id="ticket-close" aria-label="Close ticket"></button>
+  </div>
+  <div id="ticket-body">
+    <div class="d-flex gap-2 mb-3">
+      <span class="status" id="ticket-status-badge"></span>
+      <span class="status" id="ticket-priority-badge"></span>
+    </div>
+    <h3>Context</h3>
+    <p id="ticket-context"></p>
+    <p class="subtle" id="ticket-meta-summary"></p>
+  </div>
+  <label class="form-label" for="ticket-note">Resolution note</label>
+  <textarea class="form-control mb-3" rows="3" id="ticket-note" placeholder="What did you do, or what is needed next?"></textarea>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-primary" id="ticket-complete">Complete work</button>
+    <button type="button" class="btn btn-outline-secondary" id="ticket-defer">Set waiting</button>
+  </div>
+</dialog>

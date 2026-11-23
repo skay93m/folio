@@ -1,0 +1,49 @@
+<div class="page-shell">
+  <nav aria-label="Breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ page.home_href }}">Launchpad</a></li>
+      <li class="breadcrumb-item"><a href="{{ page.back_href }}">Catalogue</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ page.rendered_entry.entry.title }}</li>
+    </ol>
+  </nav>
+
+  <div class="page-head">
+    <div class="eyebrow">{{ page.eyebrow }} · {{ page.rendered_entry.entry.id }}</div>
+    <h1>{{ page.rendered_entry.entry.title }}</h1>
+    <p>{{ page.rendered_entry.entry.purpose }}</p>
+  </div>
+
+  <article class="catalogue-entry-card">
+    <div class="catalogue-meta-grid">
+      <div><strong>Maturity:</strong> <span class="status status-neutral">{{ page.rendered_entry.entry.maturity }}</span></div>
+      <div><strong>Release dependency:</strong> <code>{{ page.rendered_entry.entry.release_dependency }}</code></div>
+      <div><strong>Production owner:</strong> {{ page.rendered_entry.entry.production_owner }}</div>
+      <div><strong>Template source:</strong> <code>{{ page.rendered_entry.entry.template_name }}</code></div>
+    </div>
+
+    <h2>Live rendered example</h2>
+    <div class="catalogue-preview">
+      {{ page.rendered_entry.rendered_html|safe }}
+    </div>
+
+    <h2>Single-source markup snippet</h2>
+    <pre><code>{{ page.rendered_entry.snippet }}</code></pre>
+
+    <h2>Python usage</h2>
+    <pre><code>{{ page.rendered_entry.entry.python_usage }}</code></pre>
+
+    <h2>Constraints</h2>
+    <ul>
+      {% for constraint in page.rendered_entry.entry.constraints %}
+        <li>{{ constraint }}</li>
+      {% endfor %}
+    </ul>
+
+    <h2>Registered pattern uses</h2>
+    <div class="d-flex flex-wrap gap-2">
+      {% for pat in page.rendered_entry.pattern_links %}
+        <a class="status status-info text-decoration-none" href="{{ pat.gallery_href }}">{{ pat.name }}</a>
+      {% endfor %}
+    </div>
+  </article>
+</div>

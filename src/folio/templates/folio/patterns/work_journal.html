@@ -1,0 +1,88 @@
+<div class="work-layout">
+  <aside class="journal-pane" aria-label="{{ page.pane_aria_label }}">
+    <div class="journal-title">
+      <h2>{{ page.journal_date_label }}</h2>
+      <label><input type="checkbox" id="journal-collapse" /> Collapse</label>
+    </div>
+    <div class="journal-path">{{ page.journal_path }}</div>
+    <div class="journal-compose">
+      <div class="journal-scope">
+        <span class="badge" id="scope-label" data-work-label="{{ page.work_scope_label }}" data-general-label="{{ page.general_scope_label }}">{{ page.work_scope_label }}</span>
+        <button type="button" id="switch-scope">Switch to General</button>
+      </div>
+      <label class="visually-hidden" for="journal-cue">Optional cue</label>
+      <input class="form-control" id="journal-cue" placeholder="Optional cue or question" />
+      <label for="journal-text">Reflection</label>
+      <textarea class="form-control" id="journal-text" placeholder="Capture a thought, insight or note from this work…"></textarea>
+      <div class="journal-actions">
+        <details>
+          <summary>Markdown</summary>
+          <span>Use plain text and headings.</span>
+        </details>
+        <button type="button" class="btn btn-link" id="journal-discard">Discard draft</button>
+        <button type="button" class="btn btn-primary" id="journal-add">Add ⌘↵</button>
+      </div>
+      <p class="subtle mt-2 mb-0" id="journal-feedback" role="status">{{ page.preview_notice }}</p>
+    </div>
+
+    <div class="journal-filters">
+      <button type="button" data-journal-view="all" aria-pressed="true">All today (<span id="all-count">{{ page.entries|length }}</span>)</button>
+      <button type="button" data-journal-view="work" aria-pressed="false">This work (<span id="work-count">{{ page.entries|length }}</span>)</button>
+    </div>
+
+    <div id="journal-list">
+      {% for entry in page.entries %}
+        <div class="journal-entry" data-scope="{{ entry.scope }}">
+          <div class="meta">{% if entry.scope == "work" %}This work{% else %}General{% endif %}{% if entry.cue %} · {{ entry.cue }}{% endif %}</div>
+          <div class="journal-entry-body">{{ entry.text }}</div>
+        </div>
+      {% endfor %}
+      <p id="journal-empty" class="subtle text-center mt-4"{% if page.entries %} hidden{% endif %}>No journal cards yet for this view.</p>
+    </div>
+
+    <template id="journal-entry-template">
+      <div class="journal-entry" data-scope="work">
+        <div class="meta"></div>
+        <div class="journal-entry-body"></div>
+      </div>
+    </template>
+  </aside>
+
+  <section class="work-content">
+    <div class="page-head">
+      <div class="eyebrow">{{ page.eyebrow }}</div>
+      <h1>{{ page.title }}</h1>
+      <p>{{ page.intro }}</p>
+    </div>
+
+    <div class="d-flex gap-2 mb-4 flex-wrap">
+      {% for label, role in page.status_badges %}
+        <span class="status status-{{ role }}">{{ label }}</span>
+      {% endfor %}
+    </div>
+
+    <h2>{{ page.task_heading }}</h2>
+    <p class="pattern-description">{{ page.task_description }}</p>
+
+    <ul class="work-steps">
+      {% for step in page.steps %}
+        <li>
+          <input class="form-check-input work-step" type="checkbox" id="{{ step.id }}"{% if step.completed %} checked{% endif %} />
+          <div>
+            <label for="{{ step.id }}">{{ step.label }}</label>
+            <p>{{ step.description }}</p>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+
+    <p class="work-progress" id="work-progress" role="status"></p>
+
+    {% if page.supporting_context %}
+      <details class="surface">
+        <summary>Supporting context</summary>
+        <p class="small mt-3 mb-0">{{ page.supporting_context }}</p>
+      </details>
+    {% endif %}
+  </section>
+</div>

@@ -1,0 +1,44 @@
+<header class="site-header">
+  <div class="d-flex align-items-center gap-3">
+    <a class="sk-logo" href="{{ home_href }}" aria-label="{{ home_aria_label }}">sk<span></span></a>
+    {% if gallery_nav %}
+      <nav class="d-flex align-items-center gap-2 flex-wrap" aria-label="Gallery navigation">
+        <a class="btn btn-sm btn-outline-secondary" href="{{ gallery_nav.catalogue_href }}">Catalogue</a>
+        {% if gallery_nav.pattern_links %}
+          <label class="visually-hidden" for="page-picker">Page pattern</label>
+          <select id="page-picker" class="form-select form-select-sm" style="width: 190px;">
+            {% for item in gallery_nav.pattern_links %}
+              <option value="{{ item.key }}" data-href="{{ item.href }}"{% if item.active %} selected{% endif %}>{{ item.label }}</option>
+            {% endfor %}
+          </select>
+        {% endif %}
+      </nav>
+    {% endif %}
+  </div>
+  {% if is_stage1_shell %}
+    <div class="sk-header-actions">
+      {% if socials %}
+        <nav class="sk-header-socials" aria-label="{{ socials_aria_label }}">
+          {% for social in socials %}
+            <a href="{{ social.href }}" aria-label="{{ social.aria_label }}"{% if social.external %} target="_blank" rel="noopener noreferrer"{% endif %}>
+              {% include "folio/includes/social_icon.html" with icon=social.icon %}
+            </a>
+          {% endfor %}
+        </nav>
+      {% endif %}
+    </div>
+  {% elif show_theme_toggle %}
+    <div class="d-flex align-items-center gap-2">
+      {% if show_print_selector %}
+        <label class="visually-hidden" for="print-mode">Print colour mode</label>
+        <select id="print-mode" class="form-select form-select-sm" style="width: 135px;">
+          <option value="colour">Colour print</option>
+          <option value="greyscale">Greyscale</option>
+          <option value="black-white">Black &amp; white</option>
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-folio-print="true">Print</button>
+      {% endif %}
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="theme-toggle">Dark theme</button>
+    </div>
+  {% endif %}
+</header>

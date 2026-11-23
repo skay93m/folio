@@ -1,0 +1,92 @@
+<div class="page-shell">
+  <div class="page-head">
+    <div class="eyebrow">{{ page.eyebrow }}</div>
+    <h1>{{ page.title }}</h1>
+    <p>{{ page.intro }}</p>
+  </div>
+
+  <div class="search-layout">
+    <aside class="surface metadata">
+      <h2>{{ page.facets_heading }}</h2>
+      <div class="subtle">Sample field values</div>
+      {% for facet in page.facets %}
+        <section class="facet">
+          <h3>{{ facet.field }}</h3>
+          {% for item in facet.values %}
+            <button type="button" data-facet-field="{{ facet.field }}" data-facet-value="{{ item.value }}">
+              <span>{{ item.value }}</span>
+              <span>{{ item.count }}</span>
+            </button>
+          {% endfor %}
+        </section>
+      {% endfor %}
+    </aside>
+
+    <div>
+      <section class="surface search-builder">
+        <div class="section-title">
+          <div>
+            <h2>Search builder</h2>
+            <p class="subtle mb-0 mt-2">Find text and match structured fields.</p>
+          </div>
+          <div class="mode-tabs" role="group" aria-label="{{ page.modes_aria_label }}">
+            {% for mode in page.modes %}
+              <button type="button" data-search-mode="{{ mode }}" aria-pressed="{% if mode == page.selected_mode %}true{% else %}false{% endif %}">{{ mode }}</button>
+            {% endfor %}
+          </div>
+        </div>
+        <label class="visually-hidden" for="search-text">{{ page.search_aria_label }}</label>
+        <input class="form-control" id="search-text" value="{{ page.query }}" placeholder="{{ page.search_placeholder }}" />
+        <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+          <div class="eyebrow">Field filters</div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="add-filter">+ Add filter</button>
+        </div>
+        <div id="filters"></div>
+        <template id="filter-row-template">
+          <div class="filter-row">
+            <select class="form-select filter-field" aria-label="Metadata field">
+              <option value="type">type</option>
+              <option value="topic">topic</option>
+              <option value="status">status</option>
+            </select>
+            <select class="form-select filter-operator" aria-label="Comparison operator">
+              <option value="equals">equals</option>
+              <option value="contains">contains</option>
+              <option value="not">is not</option>
+            </select>
+            <input class="form-control filter-value" aria-label="Filter value" placeholder="Value to match" />
+            <button type="button" class="filter-remove" aria-label="Remove filter">&times;</button>
+          </div>
+        </template>
+        <div class="search-actions">
+          <button type="button" class="btn btn-link" id="clear-search">Clear</button>
+          <button type="button" class="btn btn-primary" id="run-search">Search</button>
+        </div>
+      </section>
+
+      <section class="surface result-list">
+        <div class="result-head">
+          <h2>Results</h2>
+          <span class="subtle" id="result-count" role="status">{{ page.records|length }} notes in this sample</span>
+        </div>
+        <div id="search-results">
+          {% for record in page.records %}
+            <a class="search-result" href="{{ record.href }}" data-title="{{ record.title }}" data-text="{{ record.excerpt }}" data-type="{{ record.record_type }}" data-topic="{{ record.topic }}" data-status="{{ record.status }}">
+              <h3>{{ record.title }}</h3>
+              <p>{{ record.excerpt }}</p>
+              <div class="result-meta">
+                <span>{{ record.record_type }}</span>
+                <span>{{ record.topic }}</span>
+                <span class="status status-{{ record.status_role }}">{{ record.status }}</span>
+              </div>
+            </a>
+          {% endfor %}
+          <div id="search-empty" class="empty" hidden>
+            <h3>No matching records.</h3>
+            <p class="small">Try fewer filters or another search term. Sample records only.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

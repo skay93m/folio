@@ -1,0 +1,128 @@
+<div class="reading-layout">
+  <nav class="reading-toc" aria-label="{{ page.toc_aria_label }}">
+    {% if page.back_href %}
+      <a class="sk-back-link" href="{{ page.back_href }}">&larr; {{ page.back_label }}</a>
+    {% endif %}
+    <div class="eyebrow">Contents</div>
+    {% for sec in page.sections %}
+      <a href="#{{ sec.id }}"{% if forloop.first %} class="active"{% endif %}>{{ sec.heading }}</a>
+    {% endfor %}
+    {% if page.backlinks %}
+      <a href="#backlinks">Backlinks</a>
+    {% endif %}
+    {% if page.similar_links %}
+      <a href="#similar-links">Similar links</a>
+    {% endif %}
+  </nav>
+
+  <article class="article">
+    <div class="eyebrow">{{ page.eyebrow }}</div>
+    <h1>{{ page.title }}</h1>
+    <div class="article-meta">
+      {% for item in page.meta %}
+        <span>{{ item }}</span>
+      {% endfor %}
+    </div>
+
+    <div class="abstract">
+      <p>{{ page.abstract }}</p>
+    </div>
+
+    {% if page.provenance %}
+      <div class="article-provenance">
+        {% for entry in page.provenance %}
+          <details{% if entry.open_by_default %} open{% endif %}>
+            <summary>{{ entry.summary }}</summary>
+            <p>{{ entry.detail }}</p>
+          </details>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% for sec in page.sections %}
+      <section id="{{ sec.id }}">
+        <h2>{{ sec.heading }}</h2>
+        {% for para in sec.paragraphs %}
+          <p>{{ para }}</p>
+        {% endfor %}
+        {% if sec.blockquote %}
+          {% if sec.blockquote_variant == "thought" %}
+            <blockquote class="thought">
+              {% if sec.blockquote_eyebrow %}
+                <div class="eyebrow mb-2">{{ sec.blockquote_eyebrow }}</div>
+              {% endif %}
+              <p>{{ sec.blockquote }}</p>
+            </blockquote>
+          {% else %}
+            <blockquote><p>{{ sec.blockquote }}</p></blockquote>
+          {% endif %}
+        {% endif %}
+        {% if sec.comparison %}
+          <figure>
+            <div class="comparison-figure">
+              {% for heading, body in sec.comparison %}
+                <div>
+                  <h3 class="mt-0">{{ heading }}</h3>
+                  <p class="mb-0">{{ body }}</p>
+                </div>
+              {% endfor %}
+            </div>
+            {% if sec.figure_caption %}
+              <figcaption>{{ sec.figure_caption }}</figcaption>
+            {% endif %}
+          </figure>
+        {% endif %}
+        {% if sec.code_block %}
+          <pre><code>{{ sec.code_block }}</code></pre>
+        {% endif %}
+      </section>
+    {% endfor %}
+
+    {% if page.margin_notes %}
+      {% for note in page.margin_notes %}
+        <p id="{{ note.footnote_id|default:'footnote-'|add:forloop.counter }}" class="article-footnote">{{ forloop.counter }}. {{ note.text }}</p>
+      {% endfor %}
+    {% endif %}
+
+    {% if page.backlinks or page.similar_links %}
+      <div class="sk-reading-relations">
+        {% if page.backlinks %}
+          <section id="backlinks">
+            <h2>Backlinks</h2>
+            <ul>
+              {% for link in page.backlinks %}
+                <li><a href="{{ link.href }}"{% if link.external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ link.title }}</a></li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+        {% if page.similar_links %}
+          <section id="similar-links">
+            <h2>Similar links</h2>
+            <ul>
+              {% for link in page.similar_links %}
+                <li><a href="{{ link.href }}"{% if link.external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ link.title }}</a></li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if page.show_print_action %}
+      <button type="button" class="btn btn-link px-0 mt-4" data-folio-print="true">Print / save PDF</button>
+    {% endif %}
+  </article>
+
+  <aside class="reading-margin" aria-label="{{ page.margin_aria_label }}">
+    {% for note in page.margin_notes %}
+      <div class="margin-note">
+        <div class="eyebrow">{{ note.label }}</div>
+        <p>{{ note.text }}</p>
+      </div>
+    {% endfor %}
+  </aside>
+</div>
+{% if page.show_progress %}
+  <div class="reading-progress" aria-hidden="true"></div>
+{% endif %}
