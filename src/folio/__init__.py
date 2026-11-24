@@ -37,7 +37,13 @@ from folio.contracts import (
     WorkQueue,
     WorkStep,
 )
-from folio.obsidian import ObsidianTheme, build_obsidian_theme, sync_obsidian_theme
+from folio.obsidian import (
+    ObsidianSyncResult,
+    ObsidianTheme,
+    build_obsidian_theme,
+    sync_obsidian_theme,
+    verify_obsidian_vault,
+)
 from folio.renderer import render, render_static
 from folio.verifier import VerificationResult, verify_target
 
@@ -56,6 +62,8 @@ __all__ = [
     "LaunchpadCard",
     "MarginNote",
     "MetricCard",
+    "ObsidianSyncResult",
+    "ObsidianTheme",
     "PatternInventory",
     "PrintMode",
     "ProvenanceEntry",
@@ -78,9 +86,12 @@ __all__ = [
     "WorkQueue",
     "WorkStep",
     "__version__",
+    "build_obsidian_theme",
     "build_release",
     "render",
     "render_static",
+    "sync_obsidian_theme",
     "validate_catalogue",
+    "verify_obsidian_vault",
     "verify_target",
 ]

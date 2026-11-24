@@ -19,6 +19,7 @@ from folio.catalogue import (
 )
 from folio.fixtures import get_pattern_page
 from folio.navigation import PATTERN_KEYS, build_gallery_nav
+from folio.obsidian import build_obsidian_theme
 from folio.renderer import render_static
 
 STATIC_SOURCE_DIR = Path(__file__).resolve().parent / "static" / "folio"
@@ -188,6 +189,15 @@ def _collect_manifest_assets(
     return asset_entries, tuple(sorted(fonts)), tuple(sorted(licences))
 
 
+def _write_obsidian_bundle(staging: Path) -> None:
+    tokens_css = (STATIC_SOURCE_DIR / "css" / "sk-design-system.css").read_text(encoding="utf-8")
+    theme = build_obsidian_theme(tokens_css)
+    obsidian_dir = staging / "obsidian"
+    obsidian_dir.mkdir(parents=True, exist_ok=True)
+    (obsidian_dir / "theme.css").write_text(theme.theme_css, encoding="utf-8")
+    (obsidian_dir / "manifest.json").write_text(theme.manifest_json, encoding="utf-8")
+
+
 def build_release(
     output_dir: Path | str,
     version: str,
@@ -217,6 +227,7 @@ def build_release(
         }
         _write_pattern_pages(staging, root_hrefs)
         _write_catalogue_pages(staging, root_hrefs)
+        _write_obsidian_bundle(staging)
         asset_entries, fonts, licences = _collect_manifest_assets(staging)
 
         manifest = BuildManifest(
