@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from folio.catalogue import iter_css_blocks
 from folio.verifier import VerificationResult
 
 _ROLE_FAMILIES: tuple[str, ...] = (
@@ -80,51 +81,6 @@ def _font_to_base64(font_path: Path) -> str:
     return f"data:font/ttf;base64,{encoded}"
 
 
-def _iter_top_level_blocks(css: str) -> Iterable[tuple[str, str]]:
-    """Yield top-level (selector, body) blocks outside at-rules such as @media."""
-    cleaned = _CSS_COMMENT_RE.sub("", css)
-    depth = 0
-    in_quote: str | None = None
-    escaped = False
-    buf: list[str] = []
-    selector = ""
-
-    for ch in cleaned:
-        if escaped:
-            buf.append(ch)
-            escaped = False
-            continue
-        if in_quote is not None:
-            buf.append(ch)
-            if ch == "\\":
-                escaped = True
-            elif ch == in_quote:
-                in_quote = None
-            continue
-        if ch in ("'", '"'):
-            in_quote = ch
-            buf.append(ch)
-            continue
-        if ch == "{":
-            if depth == 0:
-                selector = "".join(buf).strip()
-                buf = []
-            else:
-                buf.append(ch)
-            depth += 1
-        elif ch == "}":
-            if depth > 0:
-                depth -= 1
-                if depth == 0:
-                    yield selector, "".join(buf)
-                    selector = ""
-                    buf = []
-                else:
-                    buf.append(ch)
-        else:
-            buf.append(ch)
-
-
 def _is_light_root_selector(selector: str) -> bool:
     stripped = selector.lstrip()
     if not stripped or stripped.startswith("@"):
@@ -138,7 +94,7 @@ def _is_light_root_selector(selector: str) -> bool:
 def _parse_tokens(tokens_css: str) -> dict[str, str]:
     """Parse CSS custom properties solely from top-level light :root rule blocks."""
     vars_map: dict[str, str] = {}
-    for selector, body in _iter_top_level_blocks(tokens_css):
+    for selector, body in iter_css_blocks(tokens_css):
         if not _is_light_root_selector(selector):
             continue
         for key, value in _CSS_VAR_RE.findall(body):

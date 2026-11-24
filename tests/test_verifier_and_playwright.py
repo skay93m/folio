@@ -133,6 +133,46 @@ def test_verifier_rejects_negative_static_and_overflow_fixtures(tmp_path: Path):
     assert not res_focus.passed
     assert any("body/document" in err.lower() or "interactive control" in err.lower() for err in res_focus.errors)
 
+    # 8. file:// asset link caught statically
+    bad_file_url = tmp_path / "bad-file-url.html"
+    bad_file_url.write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        '<link rel="stylesheet" href="file:///tmp/sk-design-system.css" />'
+        '<script src="file:///tmp/folio.js"></script>'
+        "</head><body><main><p>File links</p></main></body></html>",
+        encoding="utf-8",
+    )
+    res_file_url = verify_target(bad_file_url, run_playwright=False, check_catalogue=False)
+    assert not res_file_url.passed
+    assert any("file://" in err.lower() for err in res_file_url.errors)
+
+    # 9. Zero loaded stylesheets (stylesheetCount == 0) caught by Playwright
+    no_styles = tmp_path / "no-styles.html"
+    no_styles.write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><body>'
+        "<main><p>Unstyled page</p></main></body></html>",
+        encoding="utf-8",
+    )
+    res_no_styles = verify_target(no_styles, run_playwright=True, check_catalogue=False)
+    assert not res_no_styles.passed
+    assert any("stylesheetcount == 0" in err.lower() for err in res_no_styles.errors)
+
+    # 10. Failed asset request (404 CSS/JS) caught by Playwright even when another stylesheet exists
+    broken_asset_dir = tmp_path / "broken-assets"
+    broken_asset_dir.mkdir()
+    (broken_asset_dir / "index.html").write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        "<style>body { margin: 0; }</style>"
+        '<link rel="stylesheet" href="missing.css" />'
+        '<script src="missing.js"></script>'
+        "</head><body><main><p>Broken assets</p></main></body></html>",
+        encoding="utf-8",
+    )
+    res_broken_asset = verify_target(broken_asset_dir, run_playwright=True, check_catalogue=False)
+    assert not res_broken_asset.passed
+    assert any("missing.css" in err for err in res_broken_asset.errors)
+    assert any("missing.js" in err for err in res_broken_asset.errors)
+
 
 def test_verifier_passes_on_built_dist_and_live_server(tmp_path: Path, live_server):
     dist_dir = tmp_path / "dist"

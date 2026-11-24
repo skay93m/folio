@@ -5,6 +5,7 @@ from folio.catalogue import (
     CatalogueEntry,
     CatalogueValidationError,
     PatternInventory,
+    build_class_index,
     validate_catalogue,
 )
 from folio.contracts import (
@@ -45,6 +46,7 @@ from folio.obsidian import (
     verify_obsidian_vault,
 )
 from folio.renderer import render, render_static
+from folio.server import start_prototype_server
 from folio.verifier import VerificationResult, verify_target
 
 __version__ = "0.2.0"
@@ -86,10 +88,12 @@ __all__ = [
     "WorkQueue",
     "WorkStep",
     "__version__",
+    "build_class_index",
     "build_obsidian_theme",
     "build_release",
     "render",
     "render_static",
+    "start_prototype_server",
     "sync_obsidian_theme",
     "validate_catalogue",
     "verify_obsidian_vault",

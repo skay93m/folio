@@ -14,6 +14,7 @@ from typing import Any
 from folio.catalogue import (
     build_catalogue_detail_page,
     build_catalogue_page,
+    build_class_index,
     get_catalogue_entries,
     validate_catalogue,
 )
@@ -228,6 +229,11 @@ def build_release(
         _write_pattern_pages(staging, root_hrefs)
         _write_catalogue_pages(staging, root_hrefs)
         _write_obsidian_bundle(staging)
+        class_index = build_class_index(version=version)
+        (staging / "class-index.json").write_text(
+            json.dumps(class_index, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
         asset_entries, fonts, licences = _collect_manifest_assets(staging)
 
         manifest = BuildManifest(
