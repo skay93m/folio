@@ -1,0 +1,21 @@
+{% for block in study_blocks %}
+  {% if block.kind == "quiz" %}
+    <fieldset class="sk-quiz">
+      <legend>{{ block.text }}</legend>
+      <label for="sk-quiz-{{ forloop.counter }}">Your answer</label>
+      <textarea id="sk-quiz-{{ forloop.counter }}" class="form-control" rows="3" aria-describedby="sk-quiz-hint-{{ forloop.counter }}"></textarea>
+      <p id="sk-quiz-hint-{{ forloop.counter }}" class="small">Recall your answer before revealing the reference. Your response stays in this page and is not saved.</p>
+      <details><summary>Reveal answer</summary><p>{{ block.answer|linebreaksbr }}</p></details>
+    </fieldset>
+  {% elif block.kind == "mermaid" %}
+    <figure class="sk-mermaid">
+      <pre class="mermaid" data-mermaid-source="{{ block.text }}">{{ block.text }}</pre>
+    </figure>
+  {% elif block.kind == "learner" %}
+    <div class="sk-learner-turn"><div class="eyebrow">sk: Learner</div><p>{{ block.text|linebreaksbr }}</p></div>
+  {% elif block.kind == "tutor" %}
+    <aside class="sk-tutor-callout" aria-label="Tutor"><div class="eyebrow">Tutor</div><p>{{ block.text|linebreaksbr }}</p></aside>
+  {% else %}
+    <p>{{ block.text|linebreaksbr }}</p>
+  {% endif %}
+{% endfor %}

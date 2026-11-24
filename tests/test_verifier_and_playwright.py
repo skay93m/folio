@@ -9,6 +9,138 @@ from folio.bundle import build_release
 from folio.verifier import verify_target
 
 
+def test_playwright_two_doors_dialog_and_study_primitives(page: Page, tmp_path: Path):
+    import shutil
+
+    from folio import Dialog, HeaderAction, Launchpad, LaunchpadCard, Reading, render_static
+    from folio.bundle import STATIC_SOURCE_DIR
+    from folio.verifier import _serve_directory
+
+    site_dir = tmp_path / "site"
+    site_dir.mkdir()
+    shutil.copytree(STATIC_SOURCE_DIR, site_dir / "assets")
+
+    launchpad = Launchpad(
+        title="Choose an activity",
+        intro="Focus on one activity.",
+        layout="two-door",
+        cards=(
+            LaunchpadCard("Practice", "Acquire understanding.", "/practice/"),
+            LaunchpadCard("Review", "Defend your reasoning.", "/review/"),
+        ),
+        header_actions=(HeaderAction("Session tools", "session-tools"),),
+        dialogs=(Dialog("session-tools", "Session tools", "folio/includes/elements/session_tools.html"),),
+    )
+    (site_dir / "launchpad.html").write_text(
+        render_static(launchpad, static_prefix="assets/"),
+        encoding="utf-8",
+    )
+
+    study_reading = Reading(
+        eyebrow="Lesson",
+        title="Recall and defend",
+        meta=(),
+        study_markdown=(
+            "sk: My claim.\n\n"
+            "> [!tutor]\n"
+            "> Why?\n\n"
+            "```quiz\n"
+            "Two plus two?\n"
+            "---\n"
+            "Four.\n"
+            "```\n\n"
+            "```mermaid\n"
+            "flowchart LR\n"
+            "  Read --> Recall\n"
+            "  Recall --> Defend\n"
+            "```"
+        ),
+    )
+    (site_dir / "reading.html").write_text(
+        render_static(study_reading, static_prefix="assets/"),
+        encoding="utf-8",
+    )
+
+    external_requests: list[str] = []
+
+    def track_request(req):
+        if not req.url.startswith(("http://127.0.0.1:", "http://localhost:", "data:", "blob:")):
+            external_requests.append(req.url)
+
+    page.on("request", track_request)
+    server, base_url = _serve_directory(site_dir)
+    try:
+        for width in (1280, 390):
+            page.set_viewport_size({"width": width, "height": 850})
+            page.goto(f"{base_url}/launchpad.html", wait_until="load")
+            cards = page.locator(".launch-card")
+            first, second = cards.nth(0).bounding_box(), cards.nth(1).bounding_box()
+            if width == 1280:
+                assert first["y"] == second["y"]
+            else:
+                assert second["y"] > first["y"]
+
+            trigger = page.get_by_role("button", name="Session tools", exact=True)
+            trigger.click()
+            assert page.get_by_role("dialog", name="Session tools").is_visible()
+            page.get_by_role("button", name="Close Session tools").focus()
+            page.keyboard.press("Shift+Tab")
+            assert page.get_by_role("dialog").evaluate("el => el.contains(document.activeElement)")
+            assert page.get_by_role("link", name="Lessons and reference").evaluate(
+                "el => el === document.activeElement"
+            )
+            page.keyboard.press("Tab")
+            assert page.get_by_role("button", name="Close Session tools").evaluate(
+                "el => el === document.activeElement"
+            )
+            page.keyboard.press("Escape")
+            assert not page.get_by_role("dialog").is_visible()
+            assert trigger.evaluate("el => el === document.activeElement")
+
+            trigger.click()
+            page.mouse.click(5, 5)
+            assert not page.get_by_role("dialog").is_visible()
+
+            trigger.click()
+            page.get_by_role("button", name="Close Session tools").click()
+            assert not page.get_by_role("dialog").is_visible()
+
+            page.get_by_role("button", name="Switch to dark theme", exact=True).click()
+            assert page.locator("html").get_attribute("data-bs-theme") == "dark"
+            assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+        page.set_viewport_size({"width": 1280, "height": 850})
+        page.goto(f"{base_url}/reading.html", wait_until="load")
+        page.get_by_label("Your answer").fill("4")
+        assert not page.get_by_text("Four.", exact=True).is_visible()
+        page.get_by_text("Reveal answer", exact=True).focus()
+        page.keyboard.press("Enter")
+        assert page.get_by_text("Four.", exact=True).is_visible()
+        assert page.get_by_label("Your answer").input_value() == "4"
+        assert page.get_by_label("Tutor", exact=True).is_visible()
+
+        mermaid_svg = page.locator(".sk-mermaid .mermaid svg")
+        mermaid_svg.wait_for(state="visible", timeout=10000)
+        assert page.locator(".sk-mermaid .mermaid").get_attribute("data-mermaid-theme") == "neutral"
+        light_svg_html = page.locator(".sk-mermaid .mermaid").inner_html()
+
+        page.get_by_role("button", name="Switch to dark theme", exact=True).click()
+        assert page.locator("html").get_attribute("data-bs-theme") == "dark"
+        page.wait_for_function(
+            "() => document.querySelector('.sk-mermaid .mermaid')?.getAttribute('data-mermaid-theme') === 'dark' && document.querySelector('.sk-mermaid .mermaid svg') !== null"
+        )
+        dark_svg_html = page.locator(".sk-mermaid .mermaid").inner_html()
+        assert dark_svg_html != light_svg_html
+
+        page.set_viewport_size({"width": 390, "height": 850})
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        assert external_requests == []
+    finally:
+        page.remove_listener("request", track_request)
+        server.shutdown()
+        server.server_close()
+
+
 def test_playwright_scriptless_markdown_consumer(page: Page):
     from dataclasses import replace
 

@@ -44,6 +44,7 @@
     {% endif %}
 
     {% if page.body_html %}<div class="sk-reading-body">{{ page.body_html|safe }}</div>{% endif %}
+    {% include "folio/includes/study_blocks.html" %}
 
     {% for sec in page.sections %}
       <section id="{{ sec.id }}">

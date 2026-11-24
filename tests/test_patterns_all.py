@@ -37,6 +37,81 @@ from folio.fixtures import PATTERN_KEYS, get_pattern_page
 from folio.navigation import resolve_pattern_key
 
 
+def test_study_markup_retrieval_and_tutorial_turns():
+    page = Reading(
+        eyebrow="Lesson",
+        title="Retrieval practice",
+        meta=(),
+        study_markdown=(
+            "sk: My <script>claim</script>\n\n"
+            "> [!tutor]\n"
+            "> What evidence supports it?\n\n"
+            "```quiz\n"
+            "What is two plus two?\n"
+            "---\n"
+            "Four.\n"
+            "```"
+        ),
+    )
+    for html in (
+        folio.render_static(page),
+        folio.render(RequestFactory().get("/"), page).content.decode("utf-8"),
+    ):
+        assert 'class="sk-learner-turn"' in html
+        assert 'class="sk-tutor-callout"' in html
+        assert "<legend>What is two plus two?</legend>" in html
+        assert "<summary>Reveal answer</summary>" in html
+        assert "Four." in html
+        assert "&lt;script&gt;" in html
+        assert "<script>claim" not in html
+    with pytest.raises(ValueError, match="quiz"):
+        replace(page, study_markdown="```quiz\nMissing answer\n```")
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "```quiz\nQuestion\n---\nAnswer",
+        "```quiz\nQuestion\n---\n\n```",
+        "```mermaid\nflowchart LR\nA --> B",
+        "```mermaid\n\n```",
+        "> [!tutor]",
+        "sk:",
+    ],
+)
+def test_incomplete_study_blocks_fail_at_construction(source):
+    with pytest.raises(ValueError):
+        Reading(eyebrow="Lesson", title="Practice", meta=(), study_markdown=source)
+
+
+def test_mermaid_diagram_container_and_offline_script_inclusion():
+    study_page = Reading(
+        eyebrow="Lesson",
+        title="Mermaid flow",
+        meta=(),
+        study_markdown="```mermaid\nflowchart LR\n  A[Read] --> B[Recall]\n```",
+    )
+    body_page = Reading(
+        eyebrow="Lesson",
+        title="Markdown mermaid",
+        meta=(),
+        body_html='<figure class="sk-mermaid"><pre class="mermaid">flowchart LR\n  A --> B</pre></figure>',
+    )
+    for page in (study_page, body_page):
+        html = folio.render_static(page)
+        assert 'class="sk-mermaid"' in html
+        assert 'class="mermaid"' in html
+        assert "vendor/mermaid.min.js" in html
+        assert "cdn.jsdelivr.net" not in html
+        assert "unpkg.com" not in html
+
+    scriptless = replace(body_page, include_scripts=False)
+    assert "<script" not in folio.render_static(scriptless)
+
+    plain = Reading(eyebrow="Note", title="Plain text", meta=(), body_html="<p>No diagram.</p>")
+    assert "vendor/mermaid.min.js" not in folio.render_static(plain)
+
+
 @pytest.mark.parametrize("pattern", ["reading", "homepage"])
 def test_editorial_metadata_and_script_opt_out(pattern):
     page = replace(get_pattern_page(pattern), lang="cy", meta_description='A "quoted" description',

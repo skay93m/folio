@@ -26,6 +26,9 @@
     {% endif %}
     {% if include_scripts %}
       <script src="{{ asset_urls.bootstrap_js }}"></script>
+      {% if has_mermaid %}
+        <script src="{{ asset_urls.mermaid_js }}"></script>
+      {% endif %}
       <script src="{{ asset_urls.folio_js }}"></script>
     {% endif %}
   </body>

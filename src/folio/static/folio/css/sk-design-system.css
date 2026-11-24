@@ -551,6 +551,84 @@ p {
   margin: 0 0 1rem;
 }
 
+.sk-header-actions {
+  min-width: 0;
+}
+
+.launchpad.sk-two-door {
+  max-width: 960px;
+}
+
+.sk-two-door .launch-card {
+  height: 100%;
+}
+
+.sk-quiz,
+.sk-learner-turn,
+.sk-tutor-callout {
+  margin-block: var(--sk-block-gap, 1.5rem);
+  padding: 1.25rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--sk-border);
+  border-radius: 8px;
+}
+
+.sk-learner-turn {
+  background: var(--sk-surface);
+  border-inline-start: 3px solid var(--sk-blue);
+}
+
+.sk-tutor-callout {
+  background: var(--sk-fill);
+  border-inline-start: 3px solid var(--sk-ink);
+}
+
+.sk-quiz {
+  background: var(--sk-surface);
+}
+
+.sk-quiz legend {
+  float: none;
+  width: auto;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.sk-quiz label,
+.sk-quiz summary {
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+.sk-mermaid {
+  margin-block: var(--sk-block-gap, 1.5rem);
+  padding: 1rem;
+  border: 1px solid var(--sk-border);
+  border-radius: 8px;
+  background: var(--sk-surface);
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.sk-mermaid pre.mermaid,
+.sk-mermaid div.mermaid {
+  margin: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: center;
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+.sk-mermaid svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+
 .sk-dialog h3 {
   margin-top: 1.5rem;
 }
@@ -1996,6 +2074,7 @@ figcaption {
   .reading-toc,
   .reading-margin,
   dialog,
+  [data-folio-dialog],
   .reading-progress {
     display: none !important;
   }
@@ -2034,6 +2113,16 @@ figcaption {
     background: #ffffff !important;
     color: #000000 !important;
     border: 1px solid #000000 !important;
+  }
+  .sk-quiz textarea {
+    display: none;
+  }
+  .sk-quiz details > * {
+    display: block;
+  }
+  .sk-mermaid {
+    break-inside: avoid;
+    background: #ffffff !important;
   }
   html[data-print-mode="colour"] .coral-callout {
     background: #ff4f40 !important;

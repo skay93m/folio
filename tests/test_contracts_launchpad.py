@@ -78,3 +78,39 @@ def test_launchpad_renders_via_static_and_django_http_adapters():
     partial_body = partial_response.content.decode("utf-8")
     assert "<!doctype html>" not in partial_body.lower()
     assert "Overview" in partial_body
+
+
+def test_two_door_dialog_contract():
+    from folio import Dialog, HeaderAction
+
+    page = _sample_launchpad(
+        cards=(_sample_launchpad().cards[0], LaunchpadCard("Review", "Defend an answer.", "/review/")),
+        layout="two-door",
+        show_theme_toggle=False,
+        header_actions=(HeaderAction("Session tools", "tools"),),
+        dialogs=(Dialog("tools", "Session tools", "folio/includes/elements/empty_state.html"),),
+    )
+    for html in (
+        folio.render_static(page),
+        folio.render(RequestFactory().get("/"), page).content.decode("utf-8"),
+    ):
+        assert "col-md-6" in html
+        assert "sk-two-door" in html
+        assert 'aria-controls="tools"' in html
+        assert 'data-folio-dialog="tools"' in html
+        assert '<dialog class="sk-dialog" id="tools" aria-labelledby="tools-title"' in html
+        assert 'aria-label="Close Session tools"' in html
+        assert 'id="theme-toggle"' not in html
+
+    with pytest.raises(ValueError, match="two"):
+        _sample_launchpad(layout="two-door")
+    with pytest.raises(ValueError, match="dialog"):
+        _sample_launchpad(header_actions=(HeaderAction("Tools", "missing"),))
+    with pytest.raises(ValueError, match="unique"):
+        _sample_launchpad(dialogs=page.dialogs * 2)
+    with pytest.raises(ValueError, match="shell"):
+        _sample_launchpad(dialogs=(Dialog("main", "Tools", "unused.html"),))
+    with pytest.raises(ValueError, match="dialog ID"):
+        HeaderAction("Tools", "two words")
+    with pytest.raises(ValueError, match="label"):
+        HeaderAction(" ", "tools")
