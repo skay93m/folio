@@ -136,9 +136,7 @@ class _StaticHTMLScanner(HTMLParser):
         classes = set((attr_map.get("class") or "").split())
 
         if tag_l in _FAUX_TAGS and self._inside_serif_prose():
-            self.errors.append(
-                f"{self.source_name}: forbidden faux-style tag <{tag_l}> inside Serif reading prose"
-            )
+            self.errors.append(f"{self.source_name}: forbidden faux-style tag <{tag_l}> inside Serif reading prose")
 
         if tag_l in _ASSET_LINK_TAGS:
             for attr_name in ("href", "src", "data"):
@@ -150,9 +148,7 @@ class _StaticHTMLScanner(HTMLParser):
 
         inline_style = (attr_map.get("style") or "").lower()
         if "file://" in inline_style:
-            self.errors.append(
-                f"{self.source_name}: forbidden file:// asset link in inline style attribute"
-            )
+            self.errors.append(f"{self.source_name}: forbidden file:// asset link in inline style attribute")
 
         self._stack.append((tag_l, classes))
         if tag_l == "script":
@@ -178,13 +174,9 @@ class _StaticHTMLScanner(HTMLParser):
         elif tag_l == "style" and self._in_style:
             style_text = "".join(self._buf)
             if _TOKEN_OVERRIDE_RE.search(style_text):
-                self.errors.append(
-                    f"{self.source_name}: unapproved inline <style> token override detected"
-                )
+                self.errors.append(f"{self.source_name}: unapproved inline <style> token override detected")
             if "file://" in style_text.lower():
-                self.errors.append(
-                    f"{self.source_name}: forbidden file:// asset link in inline <style>"
-                )
+                self.errors.append(f"{self.source_name}: forbidden file:// asset link in inline <style>")
             self._in_style = False
             self._buf = []
 
@@ -198,9 +190,7 @@ class _StaticHTMLScanner(HTMLParser):
             self._buf.append(data)
 
     def _inside_serif_prose(self) -> bool:
-        in_serif_container = any(
-            bool(classes & _SERIF_CONTAINER_CLASSES) for _, classes in self._stack
-        )
+        in_serif_container = any(bool(classes & _SERIF_CONTAINER_CLASSES) for _, classes in self._stack)
         if not in_serif_container:
             return False
         return any(
@@ -278,11 +268,7 @@ def _resolve_local_script_paths(
         cleaned = src.split("#", 1)[0].split("?", 1)[0]
         if not cleaned.endswith(".js"):
             continue
-        candidate = (
-            (root_dir / cleaned.lstrip("/"))
-            if cleaned.startswith("/")
-            else (html_dir / cleaned)
-        )
+        candidate = (root_dir / cleaned.lstrip("/")) if cleaned.startswith("/") else (html_dir / cleaned)
         if candidate.is_file():
             resolved.append(candidate)
     return resolved
@@ -433,9 +419,7 @@ def _check_wcag_contrast_both_themes(page: Any, url: str) -> list[str]:
 
 
 def _check_keyboard_focus(page: Any, url: str) -> list[str]:
-    page.evaluate(
-        "() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); }"
-    )
+    page.evaluate("() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); }")
     reached_visible_control = False
     for _ in range(10):
         page.keyboard.press("Tab")
@@ -510,15 +494,11 @@ def _run_playwright_checks(urls: Iterable[str]) -> tuple[list[str], list[str]]:
 
                 def on_request_failed(req: Any, target_url: str = url, out: list[str] = failed_assets) -> None:
                     if not _is_ignored_favicon(req.url):
-                        out.append(
-                            f"{target_url}: failed asset request {req.url} ({req.failure or 'requestfailed'})"
-                        )
+                        out.append(f"{target_url}: failed asset request {req.url} ({req.failure or 'requestfailed'})")
 
                 def on_response(resp: Any, target_url: str = url, out: list[str] = failed_assets) -> None:
                     if resp.status >= 400 and not _is_ignored_favicon(resp.url):
-                        out.append(
-                            f"{target_url}: failed asset request {resp.url} (HTTP {resp.status})"
-                        )
+                        out.append(f"{target_url}: failed asset request {resp.url} (HTTP {resp.status})")
 
                 page.on("requestfailed", on_request_failed)
                 page.on("response", on_response)
@@ -627,9 +607,7 @@ def verify_target(
                             rel,
                         )
                         errors.extend(html_errors)
-                        js_candidates.extend(
-                            _resolve_local_script_paths(script_srcs, html_file.parent, path)
-                        )
+                        js_candidates.extend(_resolve_local_script_paths(script_srcs, html_file.parent, path))
                     ext_js_errors, ext_js_count = _scan_local_js_files(js_candidates, base_dir=path)
                     errors.extend(ext_js_errors)
                     checks.append(f"static-html:{len(html_files)}")
@@ -637,22 +615,21 @@ def verify_target(
                     if (path / "obsidian").is_dir():
                         from folio.obsidian import build_obsidian_theme
 
-                        expected_theme = build_obsidian_theme(
-                            DEFAULT_TOKENS_CSS_PATH.read_text(encoding="utf-8")
-                        )
+                        expected_theme = build_obsidian_theme(DEFAULT_TOKENS_CSS_PATH.read_text(encoding="utf-8"))
                         dist_css = path / "obsidian" / "theme.css"
                         dist_manifest = path / "obsidian" / "manifest.json"
                         if not dist_css.is_file() or dist_css.read_text(encoding="utf-8") != expected_theme.theme_css:
                             errors.append(f"obsidian/theme.css drift detected in {path / 'obsidian'}")
-                        elif not dist_manifest.is_file() or dist_manifest.read_text(encoding="utf-8") != expected_theme.manifest_json:
+                        elif (
+                            not dist_manifest.is_file()
+                            or dist_manifest.read_text(encoding="utf-8") != expected_theme.manifest_json
+                        ):
                             errors.append(f"obsidian/manifest.json drift detected in {path / 'obsidian'}")
                         else:
                             checks.append("obsidian-dist:valid")
                     if run_playwright and html_files:
                         server, base = _serve_directory(path)
-                        playwright_urls = [
-                            f"{base}/{f.relative_to(path).as_posix()}" for f in html_files
-                        ]
+                        playwright_urls = [f"{base}/{f.relative_to(path).as_posix()}" for f in html_files]
 
         if run_playwright and playwright_urls:
             try:
@@ -662,9 +639,7 @@ def verify_target(
                 has_loop = False
             if has_loop:
                 with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                    pw_checks, pw_errors = pool.submit(
-                        _run_playwright_checks, playwright_urls
-                    ).result()
+                    pw_checks, pw_errors = pool.submit(_run_playwright_checks, playwright_urls).result()
             else:
                 pw_checks, pw_errors = _run_playwright_checks(playwright_urls)
             checks.extend(pw_checks)

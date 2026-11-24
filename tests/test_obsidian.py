@@ -20,13 +20,7 @@ from folio.obsidian import (
 from folio.verifier import VerificationResult, verify_target
 
 REAL_CSS_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "src"
-    / "folio"
-    / "static"
-    / "folio"
-    / "css"
-    / "sk-design-system.css"
+    Path(__file__).resolve().parents[1] / "src" / "folio" / "static" / "folio" / "css" / "sk-design-system.css"
 )
 
 
@@ -145,9 +139,9 @@ def test_obsidian_unmapped_token_guard() -> None:
 @pytest.mark.parametrize(
     ("token", "bad_value"),
     [
-        ("--sk-ink", "#e0dfd8"),       # fails vs paper and surface
-        ("--sk-muted", "#9999a8"),     # fails vs paper and surface
-        ("--sk-link", "#ff4f40"),      # coral fails vs paper and surface
+        ("--sk-ink", "#e0dfd8"),  # fails vs paper and surface
+        ("--sk-muted", "#9999a8"),  # fails vs paper and surface
+        ("--sk-link", "#ff4f40"),  # coral fails vs paper and surface
         ("--sk-on-coral", "#ffffff"),  # white fails on coral #ff4f40
     ],
 )
@@ -186,7 +180,9 @@ def test_sync_and_verify_obsidian_vault_round_trip(tmp_path: Path) -> None:
 
     appearance_json = vault1 / ".obsidian" / "appearance.json"
     appearance_json.write_text(
-        json.dumps({"cssTheme": "old-theme", "enabledCssSnippets": ["dissertation-spacing", "other"], "baseFontSize": 16}),
+        json.dumps(
+            {"cssTheme": "old-theme", "enabledCssSnippets": ["dissertation-spacing", "other"], "baseFontSize": 16}
+        ),
         encoding="utf-8",
     )
 
@@ -251,7 +247,9 @@ def test_verify_obsidian_vault_detects_drift(tmp_path: Path) -> None:
     (vault / ".obsidian" / "snippets").mkdir(parents=True, exist_ok=True)
     (vault / ".obsidian" / "snippets" / "dissertation-spacing.css").write_text("/* old */", encoding="utf-8")
     app_path = vault / ".obsidian" / "appearance.json"
-    app_path.write_text(json.dumps({"cssTheme": "Primary", "enabledCssSnippets": ["dissertation-spacing"]}), encoding="utf-8")
+    app_path.write_text(
+        json.dumps({"cssTheme": "Primary", "enabledCssSnippets": ["dissertation-spacing"]}), encoding="utf-8"
+    )
 
     multi_drift = verify_obsidian_vault(theme, vault)
     assert multi_drift.passed is False
