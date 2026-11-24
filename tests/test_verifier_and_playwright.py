@@ -15,10 +15,15 @@ def test_playwright_scriptless_markdown_consumer(page: Page):
     from folio.fixtures import build_homepage
 
     reading = Reading(
-        eyebrow="Note", title="A clean article title", meta=(),
+        eyebrow="Note",
+        title="A clean article title",
+        meta=(),
         body_html='<p>Markdown prose with <a href="/source/">a source</a>.</p>',
-        include_scripts=False, author_meta="Sample Author", citation_date="2026-11-23",
-        meta_description="A short note", canonical_url="https://example.com/note/",
+        include_scripts=False,
+        author_meta="Sample Author",
+        citation_date="2026-11-23",
+        meta_description="A short note",
+        canonical_url="https://example.com/note/",
     )
     page.set_content(render_static(reading, extra_context={"page_title": "Note · Site"}))
     assert page.locator(".sk-reading-body a").inner_text() == "a source"
@@ -30,9 +35,11 @@ def test_playwright_scriptless_markdown_consumer(page: Page):
     assert page.locator('meta[name="description"]').get_attribute("content") == "A short note"
     assert page.locator('link[rel="canonical"]').get_attribute("href") == "https://example.com/note/"
 
-    homepage = replace(build_homepage(), include_scripts=False, long_form_notes=(
-        HomepageNoteItem("essay", "A longer essay", "23 November 2026", "Summary.", "/essay/"),
-    ))
+    homepage = replace(
+        build_homepage(),
+        include_scripts=False,
+        long_form_notes=(HomepageNoteItem("essay", "A longer essay", "23 November 2026", "Summary.", "/essay/"),),
+    )
     page.set_content(render_static(homepage))
     assert page.locator('.sk-section-list a[href="/essay/"]').inner_text() == "A longer essay"
     assert page.locator("script").count() == 0
@@ -148,8 +155,7 @@ def test_verifier_rejects_negative_static_and_overflow_fixtures(tmp_path: Path):
     # 9. Zero loaded stylesheets (stylesheetCount == 0) caught by Playwright
     no_styles = tmp_path / "no-styles.html"
     no_styles.write_text(
-        '<!doctype html><html lang="en" data-bs-theme="light"><body>'
-        "<main><p>Unstyled page</p></main></body></html>",
+        '<!doctype html><html lang="en" data-bs-theme="light"><body><main><p>Unstyled page</p></main></body></html>',
         encoding="utf-8",
     )
     res_no_styles = verify_target(no_styles, run_playwright=True, check_catalogue=False)
@@ -208,9 +214,7 @@ def test_playwright_all_seven_patterns_interactions_and_print(page: Page, live_s
 
     # 3. Reading pattern + print modes
     page.goto(f"{live_server.url}/?page=reading")
-    assert "IBM Plex Serif" in page.evaluate(
-        "() => getComputedStyle(document.querySelector('.article p')).fontFamily"
-    )
+    assert "IBM Plex Serif" in page.evaluate("() => getComputedStyle(document.querySelector('.article p')).fontFamily")
     for mode in ("colour", "greyscale", "black-white"):
         page.evaluate(f"() => {{ document.documentElement.dataset.printMode = '{mode}'; }}")
         page.emulate_media(media="print")

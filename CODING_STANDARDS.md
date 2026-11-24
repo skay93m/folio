@@ -10,7 +10,7 @@ Reviewer-focused invariants for `skay93m/folio`. Every PR is checked against the
 
 ## 2. Public API Exports & Version Source (`src/folio/__init__.py`)
 
-- Export every public symbol from `src/folio/__init__.py` and list it in alphabetically sorted `__all__`.
+- Export the curated public package API from `src/folio/__init__.py` and list every exported symbol in alphabetically sorted `__all__`, keeping internal module helpers module-scoped.
 - Maintain `__version__` as the single in-package version string aligned with `pyproject.toml` and include `"__version__"` in `__all__`.
 - Fail fast at dataclass construction (`__post_init__`) on invalid themes, print modes, semantic roles, empty required strings, all-caps headings, or faux Serif tags (`<em>`, `<strong>`, `<i>`, `<b>`).
 
@@ -22,7 +22,7 @@ Reviewer-focused invariants for `skay93m/folio`. Every PR is checked against the
 
 ## 4. Deep Modules & Shared Helper Reuse
 
-- Design focused, deep modules behind narrow public seams (`render`, `render_static`, `build_release`, `verify_target`, `build_obsidian_theme`, `verify_obsidian_vault`, `start_prototype_server`) rather than leaking internal parsing or file-layout logic across callers.
+- Design focused, deep modules behind narrow public seams (`render`, `render_static`, `build_release`, `verify_target`, `build_obsidian_theme`, `sync_obsidian_theme`, `verify_obsidian_vault`, `start_prototype_server`) rather than leaking internal parsing or file-layout logic across callers.
 - Reuse shared helpers across modules (`iter_css_blocks` in `folio.catalogue`, `ensure_django_setup` in `folio.renderer`, `resolve_pattern_key` in `folio.navigation`) instead of duplicating CSS block parsers, Django setup, or navigation builders.
 - Remove unused dataclasses, parameters, imports, and speculative abstractions before opening a PR.
 
@@ -30,4 +30,4 @@ Reviewer-focused invariants for `skay93m/folio`. Every PR is checked against the
 
 - Develop new features, adapters, and bug fixes red-to-green: write a failing test at the public function, Django view, or Playwright browser seam, verify it fails, then implement the minimal change to pass.
 - Test real token stylesheets, rendered templates, `dist/` bundle determinism, and WCAG contrast guards directly rather than mocking away core invariants.
-- Run `uv sync --frozen`, `uv run --frozen ruff check src tests`, and `uv run --frozen pytest -q` before opening or merging a PR.
+- Run `uv sync --frozen`, `uv run --frozen ruff check src tests`, `uv run --frozen ruff format --check src tests`, and `uv run --frozen pytest -q` before opening or merging a PR.

@@ -15,9 +15,7 @@ def _parse_theme_and_print(request: HttpRequest) -> tuple[ThemeMode, PrintMode]:
     raw_theme = request.GET.get("theme", "light")
     theme: ThemeMode = "dark" if raw_theme == "dark" else "light"
     raw_print = request.GET.get("print", "colour")
-    print_mode: PrintMode = (
-        raw_print if raw_print in {"colour", "greyscale", "black-white"} else "colour"
-    )  # type: ignore[assignment]
+    print_mode: PrintMode = raw_print if raw_print in {"colour", "greyscale", "black-white"} else "colour"  # type: ignore[assignment]
     return theme, print_mode
 
 

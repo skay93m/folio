@@ -89,9 +89,7 @@ def _build_context(
         "home_href": getattr(page, "home_href", "?page=launchpad"),
         "home_aria_label": getattr(page, "home_aria_label", "SK launchpad"),
         "socials": getattr(page, "socials", ()),
-        "socials_aria_label": getattr(
-            page, "socials_aria_label", "Social and academic profiles"
-        ),
+        "socials_aria_label": getattr(page, "socials_aria_label", "Social and academic profiles"),
         "footer_copyright": getattr(page, "footer_copyright", ""),
         "footer_note": getattr(page, "footer_note", ""),
         "footer_source_url": getattr(page, "footer_source_url", ""),
@@ -101,9 +99,7 @@ def _build_context(
     if hasattr(page, "to_json_data"):
         context["page_json_data"] = page.to_json_data()
     elif hasattr(page, "periods"):
-        context["page_json_data"] = {
-            p.period_key: asdict(p) for p in page.periods
-        }
+        context["page_json_data"] = {p.period_key: asdict(p) for p in page.periods}
     if extra_context:
         context.update(extra_context)
     return context
@@ -119,14 +115,8 @@ def render(
 ) -> HttpResponse:
     """Render a typed Folio page or HTMX partial into a Django HttpResponse."""
     ensure_django_setup()
-    is_partial = (
-        partial
-        if partial is not None
-        else request.headers.get("HX-Request", "").lower() == "true"
-    )
-    template_name = (
-        page.partial_template if is_partial else "folio/base.html"
-    )
+    is_partial = partial if partial is not None else request.headers.get("HX-Request", "").lower() == "true"
+    template_name = page.partial_template if is_partial else "folio/base.html"
     context = _build_context(
         page,
         asset_urls=_resolve_asset_urls(None),
