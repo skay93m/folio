@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from folio.catalogue import CatalogueValidationError, validate_catalogue
-from folio.server import _ThreadingServer, _serve_directory
+from folio.server import _serve_directory, _ThreadingServer
 
 STATIC_DIR = Path(__file__).resolve().parent / "static" / "folio"
 STATIC_JS_DIR = STATIC_DIR / "js"

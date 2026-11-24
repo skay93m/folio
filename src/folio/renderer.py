@@ -82,7 +82,7 @@ def _build_context(
         "page_title": getattr(page, "title", "SK Design System"),
         "theme": getattr(page, "theme", "light"),
         "print_mode": getattr(page, "print_mode", "colour"),
-        "partial_template": getattr(page, "partial_template"),
+        "partial_template": page.partial_template,
         "body_classes": getattr(page, "body_classes", ""),
         "asset_urls": asset_urls,
         "show_theme_toggle": getattr(page, "show_theme_toggle", True),
@@ -125,7 +125,7 @@ def render(
         else request.headers.get("HX-Request", "").lower() == "true"
     )
     template_name = (
-        getattr(page, "partial_template") if is_partial else "folio/base.html"
+        page.partial_template if is_partial else "folio/base.html"
     )
     context = _build_context(
         page,

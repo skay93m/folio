@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import pytest
 from playwright.sync_api import Page
 
 from folio.bundle import build_release
@@ -12,7 +11,7 @@ from folio.verifier import verify_target
 def test_playwright_scriptless_markdown_consumer(page: Page):
     from dataclasses import replace
 
-    from folio import Reading, HomepageNoteItem, render_static
+    from folio import HomepageNoteItem, Reading, render_static
     from folio.fixtures import build_homepage
 
     reading = Reading(
@@ -313,6 +312,7 @@ def test_playwright_homepage_d1_dark_theme_and_search_initial_filter(page: Page,
 
     # 2. SearchIndex with initial query & active_filters invokes runSearchFilter() on load
     import shutil
+
     from folio import render_static
     from folio.bundle import STATIC_SOURCE_DIR
     from folio.contracts import SearchFilter, SearchIndex
