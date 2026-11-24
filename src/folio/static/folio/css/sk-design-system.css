@@ -2175,6 +2175,9 @@ figcaption {
     --sk-border: #777777;
     --sk-fill: #f3f3f3;
     --sk-link: #000000;
+    --sk-green: #087f75;
+    --sk-family-teal-surface: #d8f3ec;
+    --sk-family-coral-surface: #ffe2dc;
     --bs-body-bg: #ffffff;
     --bs-body-color: #000000;
     --bs-border-color: #777777;
@@ -2202,8 +2205,8 @@ figcaption {
     color: #000000 !important;
     border: 1px solid #000000 !important;
   }
-  .sk-quiz-actions {
-    display: none;
+  [data-quiz-reset] {
+    display: none !important;
   }
   .sk-quiz-explanation {
     display: block !important;
@@ -2259,11 +2262,19 @@ figcaption {
   html[data-print-mode="greyscale"] .swatch i {
     background: #dddddd !important;
   }
+  html[data-print-mode="greyscale"] .sk-quiz-option.is-correct {
+    background: #eeeeee !important;
+  }
+  html[data-print-mode="greyscale"] .sk-quiz-option.is-wrong {
+    background: #f5f5f5 !important;
+  }
   html[data-print-mode="black-white"] .coral-callout,
   html[data-print-mode="black-white"] .article .thought,
   html[data-bs-theme][data-print-mode="black-white"] .surface,
   html[data-print-mode="black-white"] .card,
   html[data-print-mode="black-white"] .metric-card,
+  html[data-print-mode="black-white"] .sk-quiz-option.is-correct,
+  html[data-print-mode="black-white"] .sk-quiz-option.is-wrong,
   html[data-print-mode="black-white"] th,
   html[data-print-mode="black-white"] td {
     background: #ffffff !important;

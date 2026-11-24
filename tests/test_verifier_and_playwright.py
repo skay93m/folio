@@ -150,11 +150,22 @@ def test_playwright_two_doors_dialog_and_study_primitives(page: Page, tmp_path: 
         dark_svg_html = page.locator(".sk-mermaid .mermaid").inner_html()
         assert dark_svg_html != light_svg_html
 
+        page.locator('.sk-quiz input[type="radio"][value="B"]').check()
         page.emulate_media(media="print")
         print_filter = page.locator(".sk-mermaid .mermaid svg").evaluate(
             "el => getComputedStyle(el).filter"
         )
         assert "invert(1)" in print_filter
+        assert page.locator(".sk-quiz-feedback").is_visible()
+        assert not page.locator("[data-quiz-reset]").is_visible()
+        assert page.locator(".sk-quiz-option.is-correct").evaluate(
+            "el => getComputedStyle(el).backgroundColor"
+        ) == "rgb(216, 243, 236)"
+        page.evaluate("() => { document.documentElement.dataset.printMode = 'greyscale'; }")
+        assert page.locator(".sk-quiz-option.is-correct").evaluate(
+            "el => getComputedStyle(el).backgroundColor"
+        ) == "rgb(238, 238, 238)"
+        page.evaluate("() => { document.documentElement.dataset.printMode = 'colour'; }")
         page.emulate_media(media="screen")
 
         page.set_viewport_size({"width": 390, "height": 850})
