@@ -37,6 +37,7 @@ from folio.contracts import (
     WorkQueue,
     WorkStep,
 )
+from folio.obsidian import ObsidianTheme, build_obsidian_theme, sync_obsidian_theme
 from folio.renderer import render, render_static
 from folio.verifier import VerificationResult, verify_target
 
