@@ -596,6 +596,95 @@ p {
   font-size: 1.05rem;
 }
 
+.sk-quiz-score {
+  margin-block: 1rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--sk-border);
+  border-radius: 6px;
+  background: var(--sk-fill);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.85rem;
+  color: var(--sk-ink);
+}
+
+.sk-quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.sk-quiz-option {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--sk-control-border);
+  border-radius: 6px;
+  background: var(--sk-surface);
+  color: var(--sk-ink);
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.sk-quiz-option:hover {
+  border-color: var(--sk-ink);
+}
+
+.sk-quiz-option input[type="radio"] {
+  accent-color: var(--sk-coral);
+  flex: 0 0 auto;
+}
+
+.sk-quiz-option-key {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+.sk-quiz-option.is-correct {
+  border-color: var(--sk-green);
+  background: var(--sk-family-teal-surface);
+  color: var(--sk-ink);
+}
+
+.sk-quiz-option.is-wrong {
+  border-color: var(--sk-link);
+  background: var(--sk-family-coral-surface);
+  color: var(--sk-ink);
+}
+
+.sk-quiz-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.sk-quiz-feedback {
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--sk-ink);
+}
+
+.sk-quiz-feedback.is-correct {
+  color: var(--sk-green);
+}
+
+.sk-quiz-feedback.is-wrong {
+  color: var(--sk-link);
+}
+
+.sk-quiz-explanation {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--sk-border);
+}
+
 .sk-quiz label,
 .sk-quiz summary {
   font-family: "IBM Plex Sans", sans-serif;
@@ -2114,11 +2203,13 @@ figcaption {
     color: #000000 !important;
     border: 1px solid #000000 !important;
   }
-  .sk-quiz textarea {
+  .sk-quiz textarea,
+  .sk-quiz-actions {
     display: none;
   }
-  .sk-quiz details > * {
-    display: block;
+  .sk-quiz details > *,
+  .sk-quiz-explanation {
+    display: block !important;
   }
   .sk-mermaid {
     break-inside: avoid;

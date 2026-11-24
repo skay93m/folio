@@ -745,7 +745,83 @@
     });
   }
 
-  // 10. Offline Mermaid diagram rendering and [data-bs-theme] sync
+  // 10. Interactive deterministic quiz grading
+  function updateQuizScore() {
+    var quizzes = Array.prototype.slice.call(document.querySelectorAll(".sk-quiz[data-quiz-answer]"));
+    if (!quizzes.length) return;
+    var correctCount = quizzes.filter(function (quiz) {
+      var expected = (quiz.getAttribute("data-quiz-answer") || "").trim().toUpperCase();
+      var checked = quiz.querySelector('input[type="radio"]:checked');
+      return Boolean(checked && checked.value.trim().toUpperCase() === expected);
+    }).length;
+    document.querySelectorAll("[data-quiz-score]").forEach(function (scoreEl) {
+      var valueEl = scoreEl.querySelector(".sk-quiz-score-value");
+      var totalEl = scoreEl.querySelector(".sk-quiz-score-total");
+      if (valueEl) valueEl.textContent = String(correctCount);
+      if (totalEl) totalEl.textContent = String(quizzes.length);
+    });
+  }
+
+  document.addEventListener("change", function (event) {
+    var input = event.target;
+    if (!input || input.type !== "radio") return;
+    var quiz = input.closest(".sk-quiz[data-quiz-answer]");
+    if (!quiz) return;
+    var expected = (quiz.getAttribute("data-quiz-answer") || "").trim().toUpperCase();
+    var chosen = (input.value || "").trim().toUpperCase();
+    quiz.querySelectorAll(".sk-quiz-option").forEach(function (opt) {
+      opt.classList.remove("is-correct", "is-wrong");
+      var optInput = opt.querySelector('input[type="radio"]');
+      if (!optInput) return;
+      var optVal = (optInput.value || "").trim().toUpperCase();
+      if (optVal === expected) {
+        opt.classList.add("is-correct");
+      } else if (optInput === input && chosen !== expected) {
+        opt.classList.add("is-wrong");
+      }
+    });
+    var feedbackEl = quiz.querySelector(".sk-quiz-feedback");
+    if (feedbackEl) {
+      feedbackEl.classList.remove("is-correct", "is-wrong");
+      if (chosen === expected) {
+        feedbackEl.classList.add("is-correct");
+        feedbackEl.textContent = "Correct (" + expected + ").";
+      } else {
+        feedbackEl.classList.add("is-wrong");
+        feedbackEl.textContent = "Not quite — answer is " + expected + ".";
+      }
+    }
+    var explanationEl = quiz.querySelector(".sk-quiz-explanation");
+    if (explanationEl) {
+      explanationEl.hidden = false;
+    }
+    updateQuizScore();
+  });
+
+  document.addEventListener("click", function (event) {
+    var resetBtn = event.target.closest("[data-quiz-reset]");
+    if (!resetBtn) return;
+    var quiz = resetBtn.closest(".sk-quiz");
+    if (!quiz) return;
+    quiz.querySelectorAll('input[type="radio"]').forEach(function (radio) {
+      radio.checked = false;
+    });
+    quiz.querySelectorAll(".sk-quiz-option").forEach(function (opt) {
+      opt.classList.remove("is-correct", "is-wrong");
+    });
+    var feedbackEl = quiz.querySelector(".sk-quiz-feedback");
+    if (feedbackEl) {
+      feedbackEl.classList.remove("is-correct", "is-wrong");
+      feedbackEl.textContent = "";
+    }
+    var explanationEl = quiz.querySelector(".sk-quiz-explanation");
+    if (explanationEl) {
+      explanationEl.hidden = true;
+    }
+    updateQuizScore();
+  });
+
+  // 11. Offline Mermaid diagram rendering, [data-bs-theme] sync, and print legibility
   function upgradeCodeMermaidBlocks() {
     document.querySelectorAll("pre > code.language-mermaid").forEach(function (codeEl) {
       var preEl = codeEl.parentElement;
@@ -767,12 +843,12 @@
   }
 
   var mermaidRenderChain = Promise.resolve();
-  function renderMermaidDiagrams(force) {
+  function renderMermaidDiagrams(force, themeOverride) {
     if (!window.mermaid) return Promise.resolve();
     upgradeCodeMermaidBlocks();
     var nodes = Array.prototype.slice.call(document.querySelectorAll(".mermaid"));
     if (!nodes.length) return Promise.resolve();
-    var targetTheme = currentMermaidTheme();
+    var targetTheme = themeOverride || currentMermaidTheme();
     var pending = nodes.filter(function (node) {
       if (!node.getAttribute("data-mermaid-source")) {
         node.setAttribute("data-mermaid-source", node.textContent || "");
@@ -781,7 +857,7 @@
     });
     if (!pending.length) return Promise.resolve();
     mermaidRenderChain = mermaidRenderChain.then(function () {
-      var themeNow = currentMermaidTheme();
+      var themeNow = themeOverride || currentMermaidTheme();
       pending.forEach(function (node) {
         node.removeAttribute("data-processed");
         node.textContent = node.getAttribute("data-mermaid-source") || "";
@@ -799,6 +875,20 @@
 
   window.folioRenderMermaid = renderMermaidDiagrams;
 
+  var mermaidPrintRestore = false;
+  window.addEventListener("beforeprint", function () {
+    if (root.dataset.bsTheme === "dark" && document.querySelector(".mermaid")) {
+      mermaidPrintRestore = true;
+      renderMermaidDiagrams(true, "neutral");
+    }
+  });
+  window.addEventListener("afterprint", function () {
+    if (mermaidPrintRestore) {
+      mermaidPrintRestore = false;
+      renderMermaidDiagrams(true);
+    }
+  });
+
   if (typeof MutationObserver === "function") {
     var themeObserver = new MutationObserver(function (mutations) {
       for (var i = 0; i < mutations.length; i++) {
@@ -813,9 +903,11 @@
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
+      updateQuizScore();
       renderMermaidDiagrams(false);
     });
   } else {
+    updateQuizScore();
     renderMermaidDiagrams(false);
   }
 })();

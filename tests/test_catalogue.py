@@ -293,6 +293,11 @@ def test_catalogue_registers_two_door_dialog_study_and_mermaid_entries():
         rendered = render_entry_example(entry)
         assert expected_cls in rendered
 
+    study_html = render_entry_example(get_catalogue_entry("study-blocks"))
+    assert "sk-quiz-option" in study_html
+    assert "sk-quiz-explanation" in study_html
+    assert "Tutor ·" in study_html
+
     index = build_class_index()
     for cls_name in (
         "sk-two-door",

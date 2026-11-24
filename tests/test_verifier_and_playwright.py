@@ -42,12 +42,18 @@ def test_playwright_two_doors_dialog_and_study_primitives(page: Page, tmp_path: 
         meta=(),
         study_markdown=(
             "sk: My claim.\n\n"
-            "> [!tutor]\n"
+            "> [!tutor] sonnet 5.5:\n"
             "> Why?\n\n"
             "```quiz\n"
-            "Two plus two?\n"
-            "---\n"
-            "Four.\n"
+            "id: pw-q1\n"
+            'question: "Two plus two?"\n'
+            "options:\n"
+            '  A: "Three."\n'
+            '  B: "Four."\n'
+            '  C: "Five."\n'
+            '  D: "Six."\n'
+            "answer: B\n"
+            'explanation: "Two plus two equals four."\n'
             "```\n\n"
             "```mermaid\n"
             "flowchart LR\n"
@@ -111,13 +117,25 @@ def test_playwright_two_doors_dialog_and_study_primitives(page: Page, tmp_path: 
 
         page.set_viewport_size({"width": 1280, "height": 850})
         page.goto(f"{base_url}/reading.html", wait_until="load")
-        page.get_by_label("Your answer").fill("4")
-        assert not page.get_by_text("Four.", exact=True).is_visible()
-        page.get_by_text("Reveal answer", exact=True).focus()
-        page.keyboard.press("Enter")
-        assert page.get_by_text("Four.", exact=True).is_visible()
-        assert page.get_by_label("Your answer").input_value() == "4"
-        assert page.get_by_label("Tutor", exact=True).is_visible()
+        assert page.locator("[data-quiz-score]").inner_text().strip() == "Score: 0 / 1"
+        assert not page.locator(".sk-quiz-explanation").is_visible()
+        assert page.get_by_label("Tutor: sonnet 5.5", exact=True).is_visible()
+
+        page.locator('.sk-quiz input[type="radio"][value="A"]').check()
+        assert page.locator(".sk-quiz-option").nth(0).evaluate("el => el.classList.contains('is-wrong')")
+        assert page.locator(".sk-quiz-option").nth(1).evaluate("el => el.classList.contains('is-correct')")
+        assert "Not quite" in page.locator(".sk-quiz-feedback").inner_text()
+        assert page.locator(".sk-quiz-explanation").is_visible()
+        assert page.locator("[data-quiz-score]").inner_text().strip() == "Score: 0 / 1"
+
+        page.locator('.sk-quiz input[type="radio"][value="B"]').check()
+        assert page.locator(".sk-quiz-option").nth(1).evaluate("el => el.classList.contains('is-correct')")
+        assert "Correct (B)." in page.locator(".sk-quiz-feedback").inner_text()
+        assert page.locator("[data-quiz-score]").inner_text().strip() == "Score: 1 / 1"
+
+        page.locator("[data-quiz-reset]").click()
+        assert not page.locator(".sk-quiz-explanation").is_visible()
+        assert page.locator("[data-quiz-score]").inner_text().strip() == "Score: 0 / 1"
 
         mermaid_svg = page.locator(".sk-mermaid .mermaid svg")
         mermaid_svg.wait_for(state="visible", timeout=10000)
@@ -131,6 +149,15 @@ def test_playwright_two_doors_dialog_and_study_primitives(page: Page, tmp_path: 
         )
         dark_svg_html = page.locator(".sk-mermaid .mermaid").inner_html()
         assert dark_svg_html != light_svg_html
+
+        page.evaluate("() => window.dispatchEvent(new Event('beforeprint'))")
+        page.wait_for_function(
+            "() => document.querySelector('.sk-mermaid .mermaid')?.getAttribute('data-mermaid-theme') === 'neutral' && document.querySelector('.sk-mermaid .mermaid svg') !== null"
+        )
+        page.evaluate("() => window.dispatchEvent(new Event('afterprint'))")
+        page.wait_for_function(
+            "() => document.querySelector('.sk-mermaid .mermaid')?.getAttribute('data-mermaid-theme') === 'dark' && document.querySelector('.sk-mermaid .mermaid svg') !== null"
+        )
 
         page.set_viewport_size({"width": 390, "height": 850})
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
@@ -304,6 +331,33 @@ def test_verifier_rejects_negative_static_and_overflow_fixtures(tmp_path: Path):
     assert not res_broken_asset.passed
     assert any("missing.css" in err for err in res_broken_asset.errors)
     assert any("missing.js" in err for err in res_broken_asset.errors)
+
+    # 11. External network request caught by offline Playwright check
+    external_dir = tmp_path / "external-cdn"
+    external_dir.mkdir()
+    (external_dir / "index.html").write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        "<style>body { margin: 0; }</style>"
+        '<script src="https://cdn.example.invalid/mermaid.min.js"></script>'
+        "</head><body><main><p>External script</p></main></body></html>",
+        encoding="utf-8",
+    )
+    res_external = verify_target(external_dir, run_playwright=True, check_catalogue=False)
+    assert not res_external.passed
+    assert any("external" in err.lower() and "cdn.example.invalid" in err for err in res_external.errors)
+
+    # 12. Unrendered .mermaid block without SVG caught by Playwright check
+    unrendered_mermaid = tmp_path / "unrendered-mermaid"
+    unrendered_mermaid.mkdir()
+    (unrendered_mermaid / "index.html").write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        "<style>body { margin: 0; }</style>"
+        '</head><body><main><figure class="sk-mermaid"><pre class="mermaid">flowchart LR\nA-->B</pre></figure></main></body></html>',
+        encoding="utf-8",
+    )
+    res_unrendered = verify_target(unrendered_mermaid, run_playwright=True, check_catalogue=False)
+    assert not res_unrendered.passed
+    assert any("mermaid" in err.lower() and "svg" in err.lower() for err in res_unrendered.errors)
 
 
 def test_verifier_passes_on_built_dist_and_live_server(tmp_path: Path, live_server):

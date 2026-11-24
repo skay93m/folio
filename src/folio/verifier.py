@@ -507,6 +507,22 @@ def _run_playwright_checks(urls: Iterable[str]) -> tuple[list[str], list[str]]:
             page = browser.new_page()
             for url in urls:
                 failed_assets: list[str] = []
+                parsed_target = urllib.parse.urlsplit(url)
+                target_origin = (parsed_target.scheme, parsed_target.netloc)
+
+                def on_request(
+                    req: Any,
+                    target_url: str = url,
+                    origin: tuple[str, str] = target_origin,
+                    out: list[str] = failed_assets,
+                ) -> None:
+                    req_url = req.url
+                    if req_url.startswith(("http://", "https://")):
+                        req_parsed = urllib.parse.urlsplit(req_url)
+                        if (req_parsed.scheme, req_parsed.netloc) != origin:
+                            out.append(
+                                f"{target_url}: external network request forbidden (offline invariant): {req_url}"
+                            )
 
                 def on_request_failed(req: Any, target_url: str = url, out: list[str] = failed_assets) -> None:
                     if not _is_ignored_favicon(req.url):
@@ -520,6 +536,7 @@ def _run_playwright_checks(urls: Iterable[str]) -> tuple[list[str], list[str]]:
                             f"{target_url}: failed asset request {resp.url} (HTTP {resp.status})"
                         )
 
+                page.on("request", on_request)
                 page.on("requestfailed", on_request_failed)
                 page.on("response", on_response)
                 try:
@@ -527,10 +544,27 @@ def _run_playwright_checks(urls: Iterable[str]) -> tuple[list[str], list[str]]:
                     page.goto(url, wait_until="load")
                     page.wait_for_function("() => document.fonts.ready")
                 finally:
+                    page.remove_listener("request", on_request)
                     page.remove_listener("requestfailed", on_request_failed)
                     page.remove_listener("response", on_response)
 
                 errors.extend(failed_assets)
+                mermaid_count = page.locator(".mermaid").count()
+                if mermaid_count > 0:
+                    has_mermaid_runtime = page.evaluate("() => Boolean(window.mermaid)")
+                    if not has_mermaid_runtime:
+                        errors.append(
+                            f"{url}: .mermaid diagram failed to render <svg> (window.mermaid unavailable)"
+                        )
+                    else:
+                        try:
+                            page.wait_for_function(
+                                "() => Array.from(document.querySelectorAll('.mermaid')).every(el => Boolean(el.querySelector('svg')))",
+                                timeout=5000,
+                            )
+                            checks.append(f"mermaid-svg:{mermaid_count}:{url}")
+                        except Exception:
+                            errors.append(f"{url}: .mermaid diagram failed to render <svg>")
                 stylesheet_count = page.evaluate("() => document.styleSheets.length")
                 if stylesheet_count == 0:
                     errors.append(f"{url}: stylesheetCount == 0 (no stylesheets loaded)")

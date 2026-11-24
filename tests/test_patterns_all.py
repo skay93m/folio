@@ -44,12 +44,21 @@ def test_study_markup_retrieval_and_tutorial_turns():
         meta=(),
         study_markdown=(
             "sk: My <script>claim</script>\n\n"
-            "> [!tutor]\n"
+            "> [!tutor] sonnet 5.5:\n"
             "> What evidence supports it?\n\n"
+            "> [!tutor] agy: Confirmed inline feedback.\n\n"
+            "> [!tutor]\n"
+            "> Bare tutor prompt.\n\n"
             "```quiz\n"
-            "What is two plus two?\n"
-            "---\n"
-            "Four.\n"
+            "id: sample-q1\n"
+            'question: "1. What is <script>two</script> plus two?"\n'
+            "options:\n"
+            '  A: "Three."\n'
+            '  B: "Four."\n'
+            '  C: "Five."\n'
+            '  D: "Six."\n'
+            "answer: B\n"
+            'explanation: "Two plus two equals four."\n'
             "```"
         ),
     )
@@ -59,23 +68,40 @@ def test_study_markup_retrieval_and_tutorial_turns():
     ):
         assert 'class="sk-learner-turn"' in html
         assert 'class="sk-tutor-callout"' in html
-        assert "<legend>What is two plus two?</legend>" in html
-        assert "<summary>Reveal answer</summary>" in html
+        assert "Tutor · sonnet 5.5" in html
+        assert "Tutor · agy" in html
+        assert "Confirmed inline feedback." in html
+        assert "Bare tutor prompt." in html
+        assert 'data-quiz-id="sample-q1"' in html
+        assert 'data-quiz-answer="B"' in html
+        assert "<legend>1. What is &lt;script&gt;two&lt;/script&gt; plus two?</legend>" in html
+        assert 'value="A"' in html
+        assert 'value="B"' in html
+        assert 'value="C"' in html
+        assert 'value="D"' in html
         assert "Four." in html
+        assert 'class="sk-quiz-explanation" hidden' in html
+        assert "Two plus two equals four." in html
+        assert 'data-quiz-score="true"' in html
+        assert 'data-quiz-reset="true"' in html
         assert "&lt;script&gt;" in html
         assert "<script>claim" not in html
+        assert "<script>two" not in html
     with pytest.raises(ValueError, match="quiz"):
-        replace(page, study_markdown="```quiz\nMissing answer\n```")
+        replace(page, study_markdown="```quiz\nMissing fields\n```")
 
 
 @pytest.mark.parametrize(
     "source",
     [
-        "```quiz\nQuestion\n---\nAnswer",
-        "```quiz\nQuestion\n---\n\n```",
+        "```quiz\nid: q1\nquestion: \"Q?\"\noptions:\n  A: \"1\"\n  B: \"2\"\nanswer: B\nexplanation: \"E\"\n",
+        "```quiz\nid: q1\nquestion: \"Q?\"\noptions:\n  A: \"1\"\n  B: \"2\"\nanswer: Z\nexplanation: \"E\"\n```",
+        "```quiz\nid: q1\nquestion: \"Q?\"\noptions:\n  A: \"1\"\nanswer: A\nexplanation: \"E\"\n```",
+        "```quiz\nid: q1\nquestion: \"Q?\"\noptions:\n  A: \"1\"\n  B: \"2\"\nanswer: A\n```",
         "```mermaid\nflowchart LR\nA --> B",
         "```mermaid\n\n```",
         "> [!tutor]",
+        "> [!tutor] sonnet 5.5:",
         "sk:",
     ],
 )
@@ -110,6 +136,29 @@ def test_mermaid_diagram_container_and_offline_script_inclusion():
 
     plain = Reading(eyebrow="Note", title="Plain text", meta=(), body_html="<p>No diagram.</p>")
     assert "vendor/mermaid.min.js" not in folio.render_static(plain)
+
+    prose_mention = Reading(
+        eyebrow="Note",
+        title="Prose mention",
+        meta=(),
+        body_html="<p>We use mermaid syntax in other lessons.</p>",
+    )
+    assert "vendor/mermaid.min.js" not in folio.render_static(prose_mention)
+
+    code_fence = Reading(
+        eyebrow="Note",
+        title="Fenced diagram",
+        meta=(),
+        body_html='<pre><code class="language-mermaid">flowchart LR\n  A --> B</code></pre>',
+    )
+    assert "vendor/mermaid.min.js" in folio.render_static(code_fence)
+
+    from folio.catalogue import build_catalogue_detail_page
+
+    primary_detail = build_catalogue_detail_page("primary-action")
+    mermaid_detail = build_catalogue_detail_page("mermaid-diagram")
+    assert "vendor/mermaid.min.js" not in folio.render_static(primary_detail)
+    assert "vendor/mermaid.min.js" in folio.render_static(mermaid_detail)
 
 
 @pytest.mark.parametrize("pattern", ["reading", "homepage"])

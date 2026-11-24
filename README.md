@@ -32,13 +32,19 @@ Set `Reading.study_markdown` to plain text using this study dialect:
 ````text
 sk: This is my explanation of the concept.
 
-> [!tutor]
+> [!tutor] sonnet 5.5:
 > What evidence supports your explanation?
 
 ```quiz
-What should you do before revealing an answer?
----
-Recall and write your own answer first.
+id: recall-001
+question: "What should you do when an automated check fails?"
+options:
+  A: "Ignore the warning."
+  B: "Inspect the cause before proceeding."
+  C: "Delete the failing test."
+  D: "Disable verification."
+answer: B
+explanation: "Inspecting the root cause preserves correctness without silent regressions."
 ```
 
 ```mermaid
@@ -48,12 +54,17 @@ flowchart LR
 ```
 ````
 
-- **Retrieval quiz (`quiz`)**: Requires a question, one `---` separator, an answer,
-  and a closing fence. Renders a labelled response field and keyboard-accessible
-  answer disclosure; responses stay on the page with no saving or network calls.
-- **Strategy 3 tutorial turns (`sk:` / `> [!tutor]`)**: Learner and tutor turns carry
+- **Retrieval quiz (`quiz`)**: Structured YAML-like block (`id`, `question`,
+  `options` `A:`–`D:`, `answer`, `explanation`) rendered as an accessible
+  multiple-choice `<fieldset class="sk-quiz">` with immediate deterministic
+  client-side grading in `folio.js` (score counter, `.is-correct`/`.is-wrong`
+  feedback, `.sk-quiz-explanation` reveal, and reset) with zero runtime LLM
+  or network calls.
+- **Strategy 3 tutorial turns (`sk:` / `> [!tutor]`)**: Learner and tutor turns
+  (including optional tutor labels such as `> [!tutor] sonnet 5.5:`) carry
   explicit labels as well as distinct styling, and all text is escaped.
 - **Offline Mermaid diagrams (`mermaid`)**: `Reading.study_markdown` (` ```mermaid `)
   and `Reading.body_html` (`.sk-mermaid` / `.mermaid` / `pre > code.language-mermaid`)
   render offline via vendored `vendor/mermaid.min.js` with zero external CDN requests
-  and sync Mermaid's `neutral` vs `dark` theme automatically with `[data-bs-theme]`.
+  and sync Mermaid's `neutral` vs `dark` theme automatically with `[data-bs-theme]`
+  and `beforeprint` / `afterprint`.

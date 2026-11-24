@@ -203,28 +203,35 @@ CATALOGUE_ENTRIES: tuple[CatalogueEntry, ...] = (
         id="study-blocks",
         title="Retrieval quiz and tutorial turns",
         group="content",
-        purpose="Recall an answer before revealing it and distinguish learner reasoning from tutor prompts.",
+        purpose="Grade multiple-choice retrieval checks deterministically on-page and distinguish learner reasoning from labelled tutor prompts.",
         constraints=(
             "Study markup is escaped plain text, with no raw HTML.",
-            "Quiz responses are temporary and are not submitted or graded.",
+            "Quiz grading and score counts run deterministically in folio.js with zero runtime LLM or network calls.",
         ),
         maturity="Reference",
         production_owner="Folio reading pattern",
-        release_dependency="folio==0.2.0 (Reading.study_markdown)",
+        release_dependency="folio==0.2.0 (Reading.study_markdown + folio.js)",
         template_name="folio/includes/study_blocks.html",
-        python_usage='Reading(..., study_markdown="sk: My explanation\\n\\n> [!tutor]\\n> Why?\\n\\n```quiz\\nQuestion?\\n---\\nAnswer.\\n```")',
+        python_usage='Reading(..., study_markdown=\'sk: My explanation\\n\\n> [!tutor] sonnet 5.5:\\n> Why?\\n\\n```quiz\\nid: q1\\nquestion: "Question?"\\noptions:\\n  A: "First"\\n  B: "Second"\\nanswer: B\\nexplanation: "Because."\\n```\')',
         used_in_patterns=("reading",),
         context={
+            "quiz_count": 1,
             "study_blocks": parse_study_markup(
                 "sk: I can explain my reasoning.\n\n"
-                "> [!tutor]\n"
+                "> [!tutor] sonnet 5.5:\n"
                 "> What evidence supports your claim?\n\n"
                 "```quiz\n"
-                "What should you do before revealing the answer?\n"
-                "---\n"
-                "Recall and write your own answer.\n"
+                "id: catalogue-q1\n"
+                'question: "What should you do when an automated check fails?"\n'
+                "options:\n"
+                '  A: "Ignore the warning."\n'
+                '  B: "Inspect the cause before proceeding."\n'
+                '  C: "Delete the failing test."\n'
+                '  D: "Disable verification."\n'
+                "answer: B\n"
+                'explanation: "Inspecting the root cause preserves correctness without silent regressions."\n'
                 "```"
-            )
+            ),
         },
     ),
     CatalogueEntry(

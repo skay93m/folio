@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+import re
 from typing import Any
 
 import django
@@ -67,6 +68,12 @@ def _resolve_asset_urls(static_prefix: str | None = None) -> dict[str, str]:
     }
 
 
+_MERMAID_MARKER_RE = re.compile(
+    r'class\s*=\s*["\'][^"\']*\b(?:mermaid|language-mermaid|sk-mermaid)\b',
+    re.IGNORECASE,
+)
+
+
 def _page_has_mermaid(
     page: Any,
     context: dict[str, Any],
@@ -79,13 +86,18 @@ def _page_has_mermaid(
     if any(getattr(block, "kind", "") == "mermaid" for block in context.get("study_blocks", ())):
         return True
     body_html = getattr(page, "body_html", "")
-    if isinstance(body_html, str) and ("mermaid" in body_html):
+    if isinstance(body_html, str) and _MERMAID_MARKER_RE.search(body_html):
         return True
     rendered_entry = getattr(page, "rendered_entry", None)
     if rendered_entry is not None and getattr(rendered_entry.entry, "id", "") == "mermaid-diagram":
         return True
-    if getattr(page, "groups", None):
-        return True
+    groups = getattr(page, "groups", None)
+    if groups:
+        return any(
+            getattr(item.entry, "id", "") == "mermaid-diagram"
+            for group in groups
+            for item in getattr(group, "entries", ())
+        )
     return False
 
 
@@ -132,7 +144,9 @@ def _build_context(
     if getattr(page, "study_markdown", ""):
         from folio.study import parse_study_markup
 
-        context["study_blocks"] = parse_study_markup(page.study_markdown)
+        study_blocks = parse_study_markup(page.study_markdown)
+        context["study_blocks"] = study_blocks
+        context["quiz_count"] = sum(1 for block in study_blocks if block.kind == "quiz")
     if extra_context:
         context.update(extra_context)
     context["has_mermaid"] = _page_has_mermaid(page, context, extra_context)
