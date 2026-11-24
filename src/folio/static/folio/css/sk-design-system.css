@@ -551,6 +551,172 @@ p {
   margin: 0 0 1rem;
 }
 
+.sk-header-actions {
+  min-width: 0;
+}
+
+.launchpad.sk-two-door {
+  max-width: 960px;
+}
+
+.sk-two-door .launch-card {
+  height: 100%;
+}
+
+.sk-quiz,
+.sk-learner-turn,
+.sk-tutor-callout {
+  margin-block: var(--sk-block-gap, 1.5rem);
+  padding: 1.25rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--sk-border);
+  border-radius: 8px;
+}
+
+.sk-learner-turn {
+  background: var(--sk-surface);
+  border-inline-start: 3px solid var(--sk-blue);
+}
+
+.sk-tutor-callout {
+  background: var(--sk-fill);
+  border-inline-start: 3px solid var(--sk-ink);
+}
+
+.sk-quiz {
+  background: var(--sk-surface);
+}
+
+.sk-quiz legend {
+  float: none;
+  width: auto;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.sk-quiz-score {
+  margin-block: 1rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--sk-border);
+  border-radius: 6px;
+  background: var(--sk-fill);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.85rem;
+  color: var(--sk-ink);
+}
+
+.sk-quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.sk-quiz-option {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--sk-control-border);
+  border-radius: 6px;
+  background: var(--sk-surface);
+  color: var(--sk-ink);
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.sk-quiz-option:hover {
+  border-color: var(--sk-ink);
+}
+
+.sk-quiz-option input[type="radio"] {
+  accent-color: var(--sk-coral);
+  flex: 0 0 auto;
+}
+
+.sk-quiz-option-key {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.85rem;
+  font-weight: 400;
+  flex: 0 0 auto;
+}
+
+.sk-quiz-option.is-correct {
+  border-color: var(--sk-green);
+  background: var(--sk-family-teal-surface);
+  color: var(--sk-ink);
+}
+
+.sk-quiz-option.is-wrong {
+  border-color: var(--sk-link);
+  background: var(--sk-family-coral-surface);
+  color: var(--sk-ink);
+}
+
+.sk-quiz-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.sk-quiz-feedback {
+  font-family: "IBM Plex Sans", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--sk-ink);
+}
+
+.sk-quiz-feedback.is-correct {
+  color: var(--sk-green);
+}
+
+.sk-quiz-feedback.is-wrong {
+  color: var(--sk-link);
+}
+
+.sk-quiz-explanation {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--sk-border);
+}
+
+.sk-quiz label {
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+.sk-mermaid {
+  margin-block: var(--sk-block-gap, 1.5rem);
+  padding: 1rem;
+  border: 1px solid var(--sk-border);
+  border-radius: 8px;
+  background: var(--sk-surface);
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.sk-mermaid pre.mermaid,
+.sk-mermaid div.mermaid {
+  margin: 0;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: center;
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+.sk-mermaid svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+
 .sk-dialog h3 {
   margin-top: 1.5rem;
 }
@@ -1996,6 +2162,7 @@ figcaption {
   .reading-toc,
   .reading-margin,
   dialog,
+  [data-folio-dialog],
   .reading-progress {
     display: none !important;
   }
@@ -2008,6 +2175,9 @@ figcaption {
     --sk-border: #777777;
     --sk-fill: #f3f3f3;
     --sk-link: #000000;
+    --sk-green: #087f75;
+    --sk-family-teal-surface: #d8f3ec;
+    --sk-family-coral-surface: #ffe2dc;
     --bs-body-bg: #ffffff;
     --bs-body-color: #000000;
     --bs-border-color: #777777;
@@ -2034,6 +2204,19 @@ figcaption {
     background: #ffffff !important;
     color: #000000 !important;
     border: 1px solid #000000 !important;
+  }
+  [data-quiz-reset] {
+    display: none !important;
+  }
+  .sk-quiz-explanation {
+    display: block !important;
+  }
+  .sk-mermaid {
+    break-inside: avoid;
+    background: #ffffff !important;
+  }
+  html[data-bs-theme="dark"] .sk-mermaid svg {
+    filter: invert(1) hue-rotate(180deg);
   }
   html[data-print-mode="colour"] .coral-callout {
     background: #ff4f40 !important;
@@ -2079,11 +2262,19 @@ figcaption {
   html[data-print-mode="greyscale"] .swatch i {
     background: #dddddd !important;
   }
+  html[data-print-mode="greyscale"] .sk-quiz-option.is-correct {
+    background: #eeeeee !important;
+  }
+  html[data-print-mode="greyscale"] .sk-quiz-option.is-wrong {
+    background: #f5f5f5 !important;
+  }
   html[data-print-mode="black-white"] .coral-callout,
   html[data-print-mode="black-white"] .article .thought,
   html[data-bs-theme][data-print-mode="black-white"] .surface,
   html[data-print-mode="black-white"] .card,
   html[data-print-mode="black-white"] .metric-card,
+  html[data-print-mode="black-white"] .sk-quiz-option.is-correct,
+  html[data-print-mode="black-white"] .sk-quiz-option.is-wrong,
   html[data-print-mode="black-white"] th,
   html[data-print-mode="black-white"] td {
     background: #ffffff !important;

@@ -27,8 +27,11 @@
         </nav>
       {% endif %}
     </div>
-  {% elif show_theme_toggle %}
-    <div class="d-flex align-items-center gap-2">
+  {% elif show_theme_toggle or header_actions %}
+    <div class="sk-header-actions d-flex align-items-center gap-2 flex-wrap">
+      {% for action in header_actions %}
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-folio-dialog="{{ action.dialog_id }}" aria-controls="{{ action.dialog_id }}" aria-haspopup="dialog">{{ action.label }}</button>
+      {% endfor %}
       {% if show_print_selector %}
         <label class="visually-hidden" for="print-mode">Print colour mode</label>
         <select id="print-mode" class="form-select form-select-sm" style="width: 135px;">
@@ -38,7 +41,7 @@
         </select>
         <button type="button" class="btn btn-sm btn-outline-secondary" data-folio-print="true">Print</button>
       {% endif %}
-      <button type="button" class="btn btn-sm btn-outline-secondary" id="theme-toggle">Dark theme</button>
+      {% if show_theme_toggle %}<button type="button" class="btn btn-sm btn-outline-secondary" id="theme-toggle">Dark theme</button>{% endif %}
     </div>
   {% endif %}
 </header>

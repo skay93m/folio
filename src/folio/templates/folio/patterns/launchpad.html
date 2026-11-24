@@ -1,10 +1,10 @@
-<div class="launchpad">
+<div class="launchpad{% if page.layout == 'two-door' %} sk-two-door{% endif %}">
   <div class="eyebrow">{{ page.eyebrow }}</div>
   <h1>{{ page.title }}</h1>
   <p class="launch-intro">{{ page.intro }}</p>
   <div class="row g-3 g-md-4">
     {% for card in page.cards %}
-      <div class="col-md-4">
+      <div class="{% if page.layout == 'two-door' %}col-md-6{% else %}col-md-4{% endif %}">
         <a class="card launch-card" href="{{ card.href }}">
           {% if card.eyebrow %}
             <div class="eyebrow mb-2">{{ card.eyebrow }}</div>
@@ -21,3 +21,6 @@
     {% endfor %}
   </div>
 </div>
+{% for dialog in page.dialogs %}
+  {% include "folio/includes/dialog.html" %}
+{% endfor %}

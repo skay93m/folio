@@ -491,6 +491,22 @@ def _run_playwright_checks(urls: Iterable[str]) -> tuple[list[str], list[str]]:
             page = browser.new_page()
             for url in urls:
                 failed_assets: list[str] = []
+                parsed_target = urllib.parse.urlsplit(url)
+                target_origin = (parsed_target.scheme, parsed_target.netloc)
+
+                def on_request(
+                    req: Any,
+                    target_url: str = url,
+                    origin: tuple[str, str] = target_origin,
+                    out: list[str] = failed_assets,
+                ) -> None:
+                    req_url = req.url
+                    if req_url.startswith(("http://", "https://")):
+                        req_parsed = urllib.parse.urlsplit(req_url)
+                        if (req_parsed.scheme, req_parsed.netloc) != origin:
+                            out.append(
+                                f"{target_url}: external network request forbidden (offline invariant): {req_url}"
+                            )
 
                 def on_request_failed(req: Any, target_url: str = url, out: list[str] = failed_assets) -> None:
                     if not _is_ignored_favicon(req.url):
@@ -500,38 +516,61 @@ def _run_playwright_checks(urls: Iterable[str]) -> tuple[list[str], list[str]]:
                     if resp.status >= 400 and not _is_ignored_favicon(resp.url):
                         out.append(f"{target_url}: failed asset request {resp.url} (HTTP {resp.status})")
 
+                page.on("request", on_request)
                 page.on("requestfailed", on_request_failed)
                 page.on("response", on_response)
                 try:
                     page.set_viewport_size({"width": 1280, "height": 800})
                     page.goto(url, wait_until="load")
                     page.wait_for_function("() => document.fonts.ready")
+
+                    mermaid_selector = ".mermaid, pre > code.language-mermaid"
+                    mermaid_count = page.locator(mermaid_selector).count()
+                    if mermaid_count > 0:
+                        has_mermaid_runtime = page.evaluate("() => Boolean(window.mermaid)")
+                        if not has_mermaid_runtime:
+                            errors.append(
+                                f"{url}: .mermaid diagram failed to render <svg> (window.mermaid unavailable)"
+                            )
+                        else:
+                            try:
+                                page.wait_for_function(
+                                    "() => {"
+                                    "  if (document.querySelector('pre > code.language-mermaid')) return false;"
+                                    "  const nodes = Array.from(document.querySelectorAll('.mermaid'));"
+                                    "  return nodes.length > 0 && nodes.every(el => Boolean(el.querySelector('svg')));"
+                                    "}",
+                                    timeout=5000,
+                                )
+                                checks.append(f"mermaid-svg:{mermaid_count}:{url}")
+                            except Exception:
+                                errors.append(f"{url}: .mermaid diagram failed to render <svg>")
+
+                    stylesheet_count = page.evaluate("() => document.styleSheets.length")
+                    if stylesheet_count == 0:
+                        errors.append(f"{url}: stylesheetCount == 0 (no stylesheets loaded)")
+                    else:
+                        checks.append(f"stylesheets:{stylesheet_count}:{url}")
+
+                    vp_checks, vp_errors = _check_viewports_overflow(page, url)
+                    checks.extend(vp_checks)
+                    errors.extend(vp_errors)
+
+                    has_sk_tokens = page.evaluate(
+                        "() => Boolean(getComputedStyle(document.documentElement).getPropertyValue('--sk-paper').trim())"
+                    )
+                    if has_sk_tokens:
+                        errors.extend(_check_sk_tokens_and_fonts(page, url))
+                        errors.extend(_check_wcag_contrast_both_themes(page, url))
+                        errors.extend(_check_keyboard_focus(page, url))
+                        errors.extend(_check_print_modes(page, url))
+                        checks.append(f"sk-tokens-f3-contrast-focus-print:{url}")
                 finally:
+                    page.remove_listener("request", on_request)
                     page.remove_listener("requestfailed", on_request_failed)
                     page.remove_listener("response", on_response)
 
                 errors.extend(failed_assets)
-                stylesheet_count = page.evaluate("() => document.styleSheets.length")
-                if stylesheet_count == 0:
-                    errors.append(f"{url}: stylesheetCount == 0 (no stylesheets loaded)")
-                else:
-                    checks.append(f"stylesheets:{stylesheet_count}:{url}")
-
-                vp_checks, vp_errors = _check_viewports_overflow(page, url)
-                checks.extend(vp_checks)
-                errors.extend(vp_errors)
-
-                has_sk_tokens = page.evaluate(
-                    "() => Boolean(getComputedStyle(document.documentElement).getPropertyValue('--sk-paper').trim())"
-                )
-                if not has_sk_tokens:
-                    continue
-
-                errors.extend(_check_sk_tokens_and_fonts(page, url))
-                errors.extend(_check_wcag_contrast_both_themes(page, url))
-                errors.extend(_check_keyboard_focus(page, url))
-                errors.extend(_check_print_modes(page, url))
-                checks.append(f"sk-tokens-f3-contrast-focus-print:{url}")
         finally:
             browser.close()
 

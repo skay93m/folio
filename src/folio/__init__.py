@@ -11,6 +11,8 @@ from folio.catalogue import (
 from folio.contracts import (
     AttentionItem,
     Dashboard,
+    Dialog,
+    HeaderAction,
     Homepage,
     HomepageNoteItem,
     JournalPreviewEntry,
@@ -57,6 +59,8 @@ __all__ = [
     "CatalogueEntry",
     "CatalogueValidationError",
     "Dashboard",
+    "Dialog",
+    "HeaderAction",
     "Homepage",
     "HomepageNoteItem",
     "JournalPreviewEntry",

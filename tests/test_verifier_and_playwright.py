@@ -8,6 +8,174 @@ from folio.bundle import build_release
 from folio.verifier import verify_target
 
 
+def test_playwright_two_doors_dialog_and_study_primitives(page: Page, tmp_path: Path):
+    import shutil
+
+    from folio import Dialog, HeaderAction, Launchpad, LaunchpadCard, Reading, render_static
+    from folio.bundle import STATIC_SOURCE_DIR
+    from folio.verifier import _serve_directory
+
+    site_dir = tmp_path / "site"
+    site_dir.mkdir()
+    shutil.copytree(STATIC_SOURCE_DIR, site_dir / "assets")
+
+    launchpad = Launchpad(
+        title="Choose an activity",
+        intro="Focus on one activity.",
+        layout="two-door",
+        cards=(
+            LaunchpadCard("Practice", "Acquire understanding.", "/practice/"),
+            LaunchpadCard("Review", "Defend your reasoning.", "/review/"),
+        ),
+        header_actions=(HeaderAction("Session tools", "session-tools"),),
+        dialogs=(Dialog("session-tools", "Session tools", "folio/includes/elements/session_tools.html"),),
+    )
+    (site_dir / "launchpad.html").write_text(
+        render_static(launchpad, static_prefix="assets/"),
+        encoding="utf-8",
+    )
+
+    study_reading = Reading(
+        eyebrow="Lesson",
+        title="Recall and defend",
+        meta=(),
+        study_markdown=(
+            "sk: My claim.\n\n"
+            "> [!tutor] sonnet 5.5:\n"
+            "> Why?\n\n"
+            "```quiz\n"
+            "id: pw-q1\n"
+            'question: "Two plus two?"\n'
+            "options:\n"
+            '  A: "Three."\n'
+            '  B: "Four."\n'
+            '  C: "Five."\n'
+            '  D: "Six."\n'
+            "answer: B\n"
+            'explanation: "Two plus two equals four."\n'
+            "```\n\n"
+            "```mermaid\n"
+            "flowchart LR\n"
+            "  Read --> Recall\n"
+            "  Recall --> Defend\n"
+            "```"
+        ),
+    )
+    (site_dir / "reading.html").write_text(
+        render_static(study_reading, static_prefix="assets/"),
+        encoding="utf-8",
+    )
+
+    external_requests: list[str] = []
+
+    def track_request(req):
+        if not req.url.startswith(("http://127.0.0.1:", "http://localhost:", "data:", "blob:")):
+            external_requests.append(req.url)
+
+    page.on("request", track_request)
+    server, base_url = _serve_directory(site_dir)
+    try:
+        for width in (1280, 390):
+            page.set_viewport_size({"width": width, "height": 850})
+            page.goto(f"{base_url}/launchpad.html", wait_until="load")
+            cards = page.locator(".launch-card")
+            first, second = cards.nth(0).bounding_box(), cards.nth(1).bounding_box()
+            if width == 1280:
+                assert first["y"] == second["y"]
+            else:
+                assert second["y"] > first["y"]
+
+            trigger = page.get_by_role("button", name="Session tools", exact=True)
+            trigger.click()
+            assert page.get_by_role("dialog", name="Session tools").is_visible()
+            page.get_by_role("button", name="Close Session tools").focus()
+            page.keyboard.press("Shift+Tab")
+            assert page.get_by_role("dialog").evaluate("el => el.contains(document.activeElement)")
+            assert page.get_by_role("link", name="Lessons and reference").evaluate(
+                "el => el === document.activeElement"
+            )
+            page.keyboard.press("Tab")
+            assert page.get_by_role("button", name="Close Session tools").evaluate(
+                "el => el === document.activeElement"
+            )
+            page.keyboard.press("Escape")
+            assert not page.get_by_role("dialog").is_visible()
+            assert trigger.evaluate("el => el === document.activeElement")
+
+            trigger.click()
+            page.mouse.click(5, 5)
+            assert not page.get_by_role("dialog").is_visible()
+
+            trigger.click()
+            page.get_by_role("button", name="Close Session tools").click()
+            assert not page.get_by_role("dialog").is_visible()
+
+            page.get_by_role("button", name="Switch to dark theme", exact=True).click()
+            assert page.locator("html").get_attribute("data-bs-theme") == "dark"
+            assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+
+        page.set_viewport_size({"width": 1280, "height": 850})
+        page.goto(f"{base_url}/reading.html", wait_until="load")
+        assert page.locator("[data-quiz-score]").inner_text().strip() == "Score: 0 / 1"
+        assert not page.locator(".sk-quiz-explanation").is_visible()
+        assert page.get_by_label("Tutor: sonnet 5.5", exact=True).is_visible()
+
+        page.locator('.sk-quiz input[type="radio"][value="A"]').check()
+        assert page.locator(".sk-quiz-option").nth(0).evaluate("el => el.classList.contains('is-wrong')")
+        assert page.locator(".sk-quiz-option").nth(1).evaluate("el => el.classList.contains('is-correct')")
+        assert "Not quite" in page.locator(".sk-quiz-feedback").inner_text()
+        assert page.locator(".sk-quiz-explanation").is_visible()
+        assert page.locator("[data-quiz-score]").inner_text().strip() == "Score: 0 / 1"
+
+        page.locator('.sk-quiz input[type="radio"][value="B"]').check()
+        assert page.locator(".sk-quiz-option").nth(1).evaluate("el => el.classList.contains('is-correct')")
+        assert "Correct (B)." in page.locator(".sk-quiz-feedback").inner_text()
+        assert page.locator("[data-quiz-score]").inner_text().strip() == "Score: 1 / 1"
+
+        page.locator("[data-quiz-reset]").click()
+        assert not page.locator(".sk-quiz-explanation").is_visible()
+        assert page.locator("[data-quiz-score]").inner_text().strip() == "Score: 0 / 1"
+
+        mermaid_svg = page.locator(".sk-mermaid .mermaid svg")
+        mermaid_svg.wait_for(state="visible", timeout=10000)
+        assert page.locator(".sk-mermaid .mermaid").get_attribute("data-mermaid-theme") == "neutral"
+        light_svg_html = page.locator(".sk-mermaid .mermaid").inner_html()
+
+        page.get_by_role("button", name="Switch to dark theme", exact=True).click()
+        assert page.locator("html").get_attribute("data-bs-theme") == "dark"
+        page.wait_for_function(
+            "() => document.querySelector('.sk-mermaid .mermaid')?.getAttribute('data-mermaid-theme') === 'dark' && document.querySelector('.sk-mermaid .mermaid svg') !== null"
+        )
+        dark_svg_html = page.locator(".sk-mermaid .mermaid").inner_html()
+        assert dark_svg_html != light_svg_html
+
+        page.locator('.sk-quiz input[type="radio"][value="B"]').check()
+        page.emulate_media(media="print")
+        print_filter = page.locator(".sk-mermaid .mermaid svg").evaluate("el => getComputedStyle(el).filter")
+        assert "invert(1)" in print_filter
+        assert page.locator(".sk-quiz-feedback").is_visible()
+        assert not page.locator("[data-quiz-reset]").is_visible()
+        assert (
+            page.locator(".sk-quiz-option.is-correct").evaluate("el => getComputedStyle(el).backgroundColor")
+            == "rgb(216, 243, 236)"
+        )
+        page.evaluate("() => { document.documentElement.dataset.printMode = 'greyscale'; }")
+        assert (
+            page.locator(".sk-quiz-option.is-correct").evaluate("el => getComputedStyle(el).backgroundColor")
+            == "rgb(238, 238, 238)"
+        )
+        page.evaluate("() => { document.documentElement.dataset.printMode = 'colour'; }")
+        page.emulate_media(media="screen")
+
+        page.set_viewport_size({"width": 390, "height": 850})
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        assert external_requests == []
+    finally:
+        page.remove_listener("request", track_request)
+        server.shutdown()
+        server.server_close()
+
+
 def test_playwright_scriptless_markdown_consumer(page: Page):
     from dataclasses import replace
 
@@ -177,6 +345,46 @@ def test_verifier_rejects_negative_static_and_overflow_fixtures(tmp_path: Path):
     assert not res_broken_asset.passed
     assert any("missing.css" in err for err in res_broken_asset.errors)
     assert any("missing.js" in err for err in res_broken_asset.errors)
+
+    # 11. External network request caught by offline Playwright check
+    external_dir = tmp_path / "external-cdn"
+    external_dir.mkdir()
+    (external_dir / "index.html").write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        "<style>body { margin: 0; }</style>"
+        '<script src="https://cdn.example.invalid/mermaid.min.js"></script>'
+        "</head><body><main><p>External script</p></main></body></html>",
+        encoding="utf-8",
+    )
+    res_external = verify_target(external_dir, run_playwright=True, check_catalogue=False)
+    assert not res_external.passed
+    assert any("external" in err.lower() and "cdn.example.invalid" in err for err in res_external.errors)
+
+    # 12. Unrendered .mermaid block without SVG caught by Playwright check
+    unrendered_mermaid = tmp_path / "unrendered-mermaid"
+    unrendered_mermaid.mkdir()
+    (unrendered_mermaid / "index.html").write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        "<style>body { margin: 0; }</style>"
+        '</head><body><main><figure class="sk-mermaid"><pre class="mermaid">flowchart LR\nA-->B</pre></figure></main></body></html>',
+        encoding="utf-8",
+    )
+    res_unrendered = verify_target(unrendered_mermaid, run_playwright=True, check_catalogue=False)
+    assert not res_unrendered.passed
+    assert any("mermaid" in err.lower() and "svg" in err.lower() for err in res_unrendered.errors)
+
+    # 13. Un-upgraded pre > code.language-mermaid without SVG caught by Playwright check
+    unupgraded_code_mermaid = tmp_path / "unupgraded-mermaid"
+    unupgraded_code_mermaid.mkdir()
+    (unupgraded_code_mermaid / "index.html").write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        "<style>body { margin: 0; }</style>"
+        '</head><body><main><pre><code class="language-mermaid">flowchart LR\nA-->B</code></pre></main></body></html>',
+        encoding="utf-8",
+    )
+    res_unupgraded = verify_target(unupgraded_code_mermaid, run_playwright=True, check_catalogue=False)
+    assert not res_unupgraded.passed
+    assert any("mermaid" in err.lower() and "svg" in err.lower() for err in res_unupgraded.errors)
 
 
 def test_verifier_passes_on_built_dist_and_live_server(tmp_path: Path, live_server):

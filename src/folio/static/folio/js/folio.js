@@ -5,6 +5,64 @@
 (function () {
   "use strict";
 
+  document.addEventListener("click", function (event) {
+    var trigger = event.target.closest("[data-folio-dialog]");
+    if (trigger) {
+      var dialog = document.getElementById(trigger.dataset.folioDialog);
+      if (dialog && dialog.tagName === "DIALOG" && !dialog.open) {
+        dialog.showModal();
+      }
+      return;
+    }
+    var openDialog = event.target;
+    if (
+      openDialog &&
+      openDialog.tagName === "DIALOG" &&
+      openDialog.classList.contains("sk-dialog") &&
+      openDialog.open
+    ) {
+      var rect = openDialog.getBoundingClientRect();
+      var inDialog =
+        rect.top <= event.clientY &&
+        event.clientY <= rect.top + rect.height &&
+        rect.left <= event.clientX &&
+        event.clientX <= rect.left + rect.width;
+      if (!inDialog) {
+        openDialog.close();
+      }
+    }
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Tab") return;
+    var dialog = event.target.closest("dialog.sk-dialog[open]");
+    if (!dialog) return;
+    var controls = Array.from(
+      dialog.querySelectorAll(
+        "a[href], button, input, select, textarea, summary, [tabindex], [contenteditable]"
+      )
+    ).filter(function (control) {
+      return (
+        control.tabIndex >= 0 &&
+        !control.matches(":disabled") &&
+        !control.closest("[inert]") &&
+        control.getClientRects().length > 0 &&
+        getComputedStyle(control).visibility === "visible"
+      );
+    });
+    if (!controls.length) return;
+    var first = controls[0];
+    var last = controls[controls.length - 1];
+    // Wrap at both ends so Tab never moves focus into the browser chrome.
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
   var root = document.documentElement;
   var params = new URLSearchParams(window.location.search);
   var requestedTheme = params.get("theme");
@@ -685,5 +743,157 @@
       var toastEl = document.querySelector("#demo-toast");
       if (toastEl) window.bootstrap.Toast.getOrCreateInstance(toastEl).show();
     });
+  }
+
+  // 10. Interactive deterministic quiz grading
+  function updateQuizScore() {
+    var quizzes = Array.prototype.slice.call(document.querySelectorAll(".sk-quiz[data-quiz-answer]"));
+    if (!quizzes.length) return;
+    var correctCount = quizzes.filter(function (quiz) {
+      var expected = (quiz.getAttribute("data-quiz-answer") || "").trim().toUpperCase();
+      var checked = quiz.querySelector('input[type="radio"]:checked');
+      return Boolean(checked && checked.value.trim().toUpperCase() === expected);
+    }).length;
+    document.querySelectorAll("[data-quiz-score]").forEach(function (scoreEl) {
+      var valueEl = scoreEl.querySelector(".sk-quiz-score-value");
+      var totalEl = scoreEl.querySelector(".sk-quiz-score-total");
+      if (valueEl) valueEl.textContent = String(correctCount);
+      if (totalEl) totalEl.textContent = String(quizzes.length);
+    });
+  }
+
+  document.addEventListener("change", function (event) {
+    var input = event.target;
+    if (!input || input.type !== "radio") return;
+    var quiz = input.closest(".sk-quiz[data-quiz-answer]");
+    if (!quiz) return;
+    var expected = (quiz.getAttribute("data-quiz-answer") || "").trim().toUpperCase();
+    var chosen = (input.value || "").trim().toUpperCase();
+    quiz.querySelectorAll(".sk-quiz-option").forEach(function (opt) {
+      opt.classList.remove("is-correct", "is-wrong");
+      var optInput = opt.querySelector('input[type="radio"]');
+      if (!optInput) return;
+      var optVal = (optInput.value || "").trim().toUpperCase();
+      if (optVal === expected) {
+        opt.classList.add("is-correct");
+      } else if (optInput === input && chosen !== expected) {
+        opt.classList.add("is-wrong");
+      }
+    });
+    var feedbackEl = quiz.querySelector(".sk-quiz-feedback");
+    if (feedbackEl) {
+      feedbackEl.classList.remove("is-correct", "is-wrong");
+      if (chosen === expected) {
+        feedbackEl.classList.add("is-correct");
+        feedbackEl.textContent = "Correct (" + expected + ").";
+      } else {
+        feedbackEl.classList.add("is-wrong");
+        feedbackEl.textContent = "Not quite — answer is " + expected + ".";
+      }
+    }
+    var explanationEl = quiz.querySelector(".sk-quiz-explanation");
+    if (explanationEl) {
+      explanationEl.hidden = false;
+    }
+    updateQuizScore();
+  });
+
+  document.addEventListener("click", function (event) {
+    var resetBtn = event.target.closest("[data-quiz-reset]");
+    if (!resetBtn) return;
+    var quiz = resetBtn.closest(".sk-quiz");
+    if (!quiz) return;
+    quiz.querySelectorAll('input[type="radio"]').forEach(function (radio) {
+      radio.checked = false;
+    });
+    quiz.querySelectorAll(".sk-quiz-option").forEach(function (opt) {
+      opt.classList.remove("is-correct", "is-wrong");
+    });
+    var feedbackEl = quiz.querySelector(".sk-quiz-feedback");
+    if (feedbackEl) {
+      feedbackEl.classList.remove("is-correct", "is-wrong");
+      feedbackEl.textContent = "";
+    }
+    var explanationEl = quiz.querySelector(".sk-quiz-explanation");
+    if (explanationEl) {
+      explanationEl.hidden = true;
+    }
+    updateQuizScore();
+  });
+
+  // 11. Offline Mermaid diagram rendering and [data-bs-theme] sync
+  function upgradeCodeMermaidBlocks() {
+    document.querySelectorAll("pre > code.language-mermaid").forEach(function (codeEl) {
+      var preEl = codeEl.parentElement;
+      if (!preEl) return;
+      var source = codeEl.textContent || "";
+      var figure = document.createElement("figure");
+      figure.className = "sk-mermaid";
+      var diagram = document.createElement("pre");
+      diagram.className = "mermaid";
+      diagram.setAttribute("data-mermaid-source", source);
+      diagram.textContent = source;
+      figure.appendChild(diagram);
+      preEl.replaceWith(figure);
+    });
+  }
+
+  function currentMermaidTheme() {
+    return root.dataset.bsTheme === "dark" ? "dark" : "neutral";
+  }
+
+  var mermaidRenderChain = Promise.resolve();
+  function renderMermaidDiagrams(force, themeOverride) {
+    if (!window.mermaid) return Promise.resolve();
+    upgradeCodeMermaidBlocks();
+    var nodes = Array.prototype.slice.call(document.querySelectorAll(".mermaid"));
+    if (!nodes.length) return Promise.resolve();
+    var targetTheme = themeOverride || currentMermaidTheme();
+    var pending = nodes.filter(function (node) {
+      if (!node.getAttribute("data-mermaid-source")) {
+        node.setAttribute("data-mermaid-source", node.textContent || "");
+      }
+      return force || node.getAttribute("data-mermaid-theme") !== targetTheme;
+    });
+    if (!pending.length) return Promise.resolve();
+    mermaidRenderChain = mermaidRenderChain.then(function () {
+      var themeNow = themeOverride || currentMermaidTheme();
+      pending.forEach(function (node) {
+        node.removeAttribute("data-processed");
+        node.textContent = node.getAttribute("data-mermaid-source") || "";
+        node.setAttribute("data-mermaid-theme", themeNow);
+      });
+      window.mermaid.initialize({
+        startOnLoad: false,
+        theme: themeNow,
+        securityLevel: "strict",
+      });
+      return window.mermaid.run({ nodes: pending });
+    });
+    return mermaidRenderChain;
+  }
+
+  window.folioRenderMermaid = renderMermaidDiagrams;
+
+  if (typeof MutationObserver === "function") {
+    var themeObserver = new MutationObserver(function (mutations) {
+      for (var i = 0; i < mutations.length; i++) {
+        if (mutations[i].attributeName === "data-bs-theme") {
+          renderMermaidDiagrams(false);
+          break;
+        }
+      }
+    });
+    themeObserver.observe(root, { attributes: true, attributeFilter: ["data-bs-theme"] });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      updateQuizScore();
+      renderMermaidDiagrams(false);
+    });
+  } else {
+    updateQuizScore();
+    renderMermaidDiagrams(false);
   }
 })();

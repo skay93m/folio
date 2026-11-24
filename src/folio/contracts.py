@@ -100,6 +100,43 @@ class LaunchpadCard:
         validate_semantic_role(self.status_role, "LaunchpadCard.status_role")
 
 
+def require_html_id(value: str) -> str:
+    """Keep generated dialog IDs usable as HTML identifiers."""
+    if not isinstance(value, str) or not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_-]*", value):
+        raise ValueError("dialog ID must start with a letter and contain letters, digits, hyphens or underscores")
+    return value
+
+
+@dataclass(frozen=True, slots=True)
+class HeaderAction:
+    """Secondary button in the header that opens a named native dialog."""
+
+    label: str
+    dialog_id: str
+
+    def __post_init__(self) -> None:
+        require_non_empty(self.label, "HeaderAction.label")
+        require_html_id(self.dialog_id)
+
+
+@dataclass(frozen=True, slots=True)
+class Dialog:
+    """Reusable native dialog with consumer-owned template content.
+
+    Content templates receive the normal rendering context, including any
+    CSRF token supplied by the Django adapter. Folio does not persist form data.
+    """
+
+    id: str
+    title: str
+    template_name: str
+
+    def __post_init__(self) -> None:
+        require_html_id(self.id)
+        require_sentence_case(self.title, "Dialog.title")
+        require_non_empty(self.template_name, "Dialog.template_name")
+
+
 @dataclass(frozen=True, slots=True)
 class Launchpad:
     """Concise entry-point pattern with a small set of destination cards."""
@@ -113,6 +150,9 @@ class Launchpad:
     theme: ThemeMode = "light"
     print_mode: PrintMode = "colour"
     show_theme_toggle: bool = True
+    layout: Literal["default", "two-door"] = "default"
+    header_actions: tuple[HeaderAction, ...] = ()
+    dialogs: tuple[Dialog, ...] = ()
 
     pattern_key: str = "launchpad"
     partial_template: str = "folio/patterns/launchpad.html"
@@ -125,6 +165,19 @@ class Launchpad:
         validate_print_mode(self.print_mode)
         if not self.cards:
             raise ValueError("Launchpad.cards must contain at least one card")
+        if self.layout not in {"default", "two-door"}:
+            raise ValueError("Launchpad.layout must be default or two-door")
+        if self.layout == "two-door" and len(self.cards) != 2:
+            raise ValueError("Launchpad two-door layout requires exactly two cards")
+        ids = [dialog.id for dialog in self.dialogs]
+        if set(ids) & {"main", "theme-toggle", "page-picker", "print-mode"}:
+            raise ValueError("Launchpad dialog IDs must not collide with shell control IDs")
+        if len(ids) != len(set(ids)):
+            raise ValueError("Launchpad dialog IDs must be unique")
+        if set(ids) & {f"{identifier}-title" for identifier in ids}:
+            raise ValueError("Launchpad dialog IDs must not collide with generated title IDs")
+        if any(action.dialog_id not in ids for action in self.header_actions):
+            raise ValueError("Launchpad header action references an unknown dialog")
 
 
 @dataclass(frozen=True, slots=True)
@@ -309,6 +362,7 @@ class Reading:
 
     pattern_key: str = "reading"
     partial_template: str = "folio/patterns/reading.html"
+    study_markdown: str = ""
 
     @property
     def body_classes(self) -> str:
@@ -322,6 +376,10 @@ class Reading:
 
     def __post_init__(self) -> None:
         require_non_empty(self.lang, "Reading.lang")
+        if self.study_markdown:
+            from folio.study import parse_study_markup
+
+            parse_study_markup(self.study_markdown)
         require_non_empty(self.eyebrow, "Reading.eyebrow")
         require_sentence_case(self.title, "Reading.title")
         if self.abstract:
@@ -332,8 +390,8 @@ class Reading:
         require_non_empty(self.margin_aria_label, "Reading.margin_aria_label")
         validate_theme(self.theme)
         validate_print_mode(self.print_mode)
-        if not self.sections and not self.body_html.strip():
-            raise ValueError("Reading requires sections or non-empty body_html")
+        if not self.sections and not self.body_html.strip() and not self.study_markdown.strip():
+            raise ValueError("Reading requires sections, body_html or study_markdown")
 
 
 @dataclass(frozen=True, slots=True)

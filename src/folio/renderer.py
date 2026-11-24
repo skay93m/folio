@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict
 from typing import Any
 
@@ -50,6 +51,7 @@ def _resolve_asset_urls(static_prefix: str | None = None) -> dict[str, str]:
                 "bootstrap_css": static("folio/vendor/bootstrap.min.css"),
                 "sk_css": static("folio/css/sk-design-system.css"),
                 "bootstrap_js": static("folio/vendor/bootstrap.bundle.min.js"),
+                "mermaid_js": static("folio/vendor/mermaid.min.js"),
                 "folio_js": static("folio/js/folio.js"),
             }
         except Exception:
@@ -61,8 +63,42 @@ def _resolve_asset_urls(static_prefix: str | None = None) -> dict[str, str]:
         "bootstrap_css": f"{prefix}vendor/bootstrap.min.css",
         "sk_css": f"{prefix}css/sk-design-system.css",
         "bootstrap_js": f"{prefix}vendor/bootstrap.bundle.min.js",
+        "mermaid_js": f"{prefix}vendor/mermaid.min.js",
         "folio_js": f"{prefix}js/folio.js",
     }
+
+
+_MERMAID_MARKER_RE = re.compile(
+    r'class\s*=\s*["\'][^"\']*\b(?:mermaid|language-mermaid|sk-mermaid)\b',
+    re.IGNORECASE,
+)
+
+
+def _page_has_mermaid(
+    page: Any,
+    context: dict[str, Any],
+    extra_context: dict[str, Any] | None,
+) -> bool:
+    if extra_context and "has_mermaid" in extra_context:
+        return bool(extra_context["has_mermaid"])
+    if getattr(page, "include_mermaid", False):
+        return True
+    if any(getattr(block, "kind", "") == "mermaid" for block in context.get("study_blocks", ())):
+        return True
+    body_html = getattr(page, "body_html", "")
+    if isinstance(body_html, str) and _MERMAID_MARKER_RE.search(body_html):
+        return True
+    rendered_entry = getattr(page, "rendered_entry", None)
+    if rendered_entry is not None and getattr(rendered_entry.entry, "id", "") == "mermaid-diagram":
+        return True
+    groups = getattr(page, "groups", None)
+    if groups:
+        return any(
+            getattr(item.entry, "id", "") == "mermaid-diagram"
+            for group in groups
+            for item in getattr(group, "entries", ())
+        )
+    return False
 
 
 def _build_context(
@@ -86,6 +122,7 @@ def _build_context(
         "body_classes": getattr(page, "body_classes", ""),
         "asset_urls": asset_urls,
         "show_theme_toggle": getattr(page, "show_theme_toggle", True),
+        "header_actions": getattr(page, "header_actions", ()),
         "home_href": getattr(page, "home_href", "?page=launchpad"),
         "home_aria_label": getattr(page, "home_aria_label", "SK launchpad"),
         "socials": getattr(page, "socials", ()),
@@ -100,8 +137,15 @@ def _build_context(
         context["page_json_data"] = page.to_json_data()
     elif hasattr(page, "periods"):
         context["page_json_data"] = {p.period_key: asdict(p) for p in page.periods}
+    if getattr(page, "study_markdown", ""):
+        from folio.study import parse_study_markup
+
+        study_blocks = parse_study_markup(page.study_markdown)
+        context["study_blocks"] = study_blocks
+        context["quiz_count"] = sum(1 for block in study_blocks if block.kind == "quiz")
     if extra_context:
         context.update(extra_context)
+    context["has_mermaid"] = _page_has_mermaid(page, context, extra_context)
     return context
 
 

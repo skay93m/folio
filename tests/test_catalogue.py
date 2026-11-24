@@ -279,3 +279,37 @@ def test_build_class_index_exposes_classes_layout_primitives_and_tokens():
     assert "primary-action" in index["elements"]
     assert "btn-primary" in index["elements"]["primary-action"]["classes"]
     assert set(index["patterns"].keys()) == set(PATTERN_INVENTORIES.keys())
+
+
+def test_catalogue_registers_two_door_dialog_study_and_mermaid_entries():
+    expected = {
+        "two-door-launchpad": ("layout", "launchpad", "sk-two-door"),
+        "native-dialog": ("navigation", "launchpad", "sk-dialog"),
+        "study-blocks": ("content", "reading", "sk-quiz"),
+        "mermaid-diagram": ("content", "reading", "sk-mermaid"),
+    }
+    for entry_id, (group, pattern_key, expected_cls) in expected.items():
+        entry = get_catalogue_entry(entry_id)
+        assert entry.group == group
+        assert pattern_key in entry.used_in_patterns
+        assert entry_id in PATTERN_INVENTORIES[pattern_key].entry_ids
+        rendered = render_entry_example(entry)
+        assert expected_cls in rendered
+
+    study_html = render_entry_example(get_catalogue_entry("study-blocks"))
+    assert "sk-quiz-option" in study_html
+    assert "sk-quiz-explanation" in study_html
+    assert "Tutor ·" in study_html
+
+    index = build_class_index()
+    for cls_name in (
+        "sk-two-door",
+        "sk-header-actions",
+        "sk-dialog",
+        "sk-quiz",
+        "sk-learner-turn",
+        "sk-tutor-callout",
+        "sk-mermaid",
+    ):
+        assert cls_name in index["classes"]
+    assert "launchpad" in index["layout_primitives"]["sk-dialog"]["pattern"]

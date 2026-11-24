@@ -1,0 +1,39 @@
+{% if quiz_count %}
+  <div class="sk-quiz-score" role="status" aria-live="polite" data-quiz-score="true">
+    Score: <span class="sk-quiz-score-value">0</span> / <span class="sk-quiz-score-total">{{ quiz_count }}</span>
+  </div>
+{% endif %}
+{% for block in study_blocks %}
+  {% if block.kind == "quiz" %}
+    <fieldset class="sk-quiz" data-quiz-id="{{ block.quiz_id|default:forloop.counter }}" data-quiz-answer="{{ block.answer }}">
+      <legend>{{ block.text }}</legend>
+      <div class="sk-quiz-options" role="radiogroup" aria-label="Answer choices">
+        {% for opt_key, opt_text in block.options %}
+          <label class="sk-quiz-option">
+            <input type="radio" name="sk-quiz-{{ block.quiz_id|default:forloop.parentloop.counter }}" value="{{ opt_key }}" />
+            <span class="sk-quiz-option-key">{{ opt_key }}</span>
+            <span class="sk-quiz-option-text">{{ opt_text }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      <div class="sk-quiz-actions">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-quiz-reset="true">Reset</button>
+        <span class="sk-quiz-feedback" role="status" aria-live="polite"></span>
+      </div>
+      <div class="sk-quiz-explanation" hidden>
+        <div class="eyebrow">Explanation</div>
+        <p>{{ block.explanation|linebreaksbr }}</p>
+      </div>
+    </fieldset>
+  {% elif block.kind == "mermaid" %}
+    <figure class="sk-mermaid">
+      <pre class="mermaid" data-mermaid-source="{{ block.text }}">{{ block.text }}</pre>
+    </figure>
+  {% elif block.kind == "learner" %}
+    <div class="sk-learner-turn"><div class="eyebrow">sk: Learner</div><p>{{ block.text|linebreaksbr }}</p></div>
+  {% elif block.kind == "tutor" %}
+    <aside class="sk-tutor-callout" aria-label="Tutor{% if block.label %}: {{ block.label }}{% endif %}"><div class="eyebrow">Tutor{% if block.label %} · {{ block.label }}{% endif %}</div><p>{{ block.text|linebreaksbr }}</p></aside>
+  {% else %}
+    <p>{{ block.text|linebreaksbr }}</p>
+  {% endif %}
+{% endfor %}

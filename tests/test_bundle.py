@@ -30,6 +30,7 @@ def test_build_release_writes_deterministic_manifest_and_assets(tmp_path: Path):
         "assets/js/folio.js",
     ]
     assert "assets/vendor/BOOTSTRAP-LICENSE" in manifest1["licences"]
+    assert "assets/vendor/MERMAID-LICENSE" in manifest1["licences"]
     assert "assets/fonts/IBMPlexSans.ttf" in manifest1["fonts"]
 
     for rel_path in (
@@ -46,6 +47,8 @@ def test_build_release_writes_deterministic_manifest_and_assets(tmp_path: Path):
         "class-index.json",
         "assets/css/sk-design-system.css",
         "assets/js/folio.js",
+        "assets/vendor/mermaid.min.js",
+        "assets/vendor/MERMAID-LICENSE",
         "assets/approved-palette.json",
     ):
         assert (out1 / rel_path).is_file(), f"Missing {rel_path}"

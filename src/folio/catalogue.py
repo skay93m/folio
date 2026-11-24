@@ -14,8 +14,17 @@ from typing import Any, Literal
 from django.template import TemplateDoesNotExist
 from django.template.loader import get_template, render_to_string
 
-from folio.contracts import PrintMode, ThemeMode, validate_print_mode, validate_theme
+from folio.contracts import (
+    Dialog,
+    Launchpad,
+    LaunchpadCard,
+    PrintMode,
+    ThemeMode,
+    validate_print_mode,
+    validate_theme,
+)
 from folio.renderer import ensure_django_setup
+from folio.study import parse_study_markup
 
 ElementGroupKey = Literal[
     "foundations",
@@ -159,6 +168,90 @@ CATALOGUE_ENTRIES: tuple[CatalogueEntry, ...] = (
         used_in_patterns=("launchpad", "dashboard", "search", "work-journal", "work-queues"),
     ),
     CatalogueEntry(
+        id="two-door-launchpad",
+        title="Two-door Launchpad",
+        group="layout",
+        purpose="Keep two primary activity doors on a calm responsive canvas.",
+        constraints=("Provide exactly two cards; secondary tools belong in a header dialog.",),
+        maturity="Reference",
+        production_owner="Folio layout",
+        release_dependency="folio==0.2.0 (Launchpad.layout)",
+        template_name="folio/patterns/launchpad.html",
+        python_usage='Launchpad(..., layout="two-door", cards=(acquire, review))',
+        used_in_patterns=("launchpad",),
+        context={
+            "page": Launchpad(
+                title="Choose an activity",
+                intro="Give one activity your full attention.",
+                layout="two-door",
+                cards=(
+                    LaunchpadCard(
+                        "Practice / acquire",
+                        "Build understanding through retrieval.",
+                        "?page=reading",
+                    ),
+                    LaunchpadCard(
+                        "Review / defend",
+                        "Explain and defend your reasoning.",
+                        "?page=reading",
+                    ),
+                ),
+            )
+        },
+    ),
+    CatalogueEntry(
+        id="study-blocks",
+        title="Retrieval quiz and tutorial turns",
+        group="content",
+        purpose="Grade multiple-choice retrieval checks deterministically on-page and distinguish learner reasoning from labelled tutor prompts.",
+        constraints=(
+            "Study markup is escaped plain text, with no raw HTML.",
+            "Quiz grading and score counts run deterministically in folio.js with zero runtime LLM or network calls.",
+        ),
+        maturity="Reference",
+        production_owner="Folio reading pattern",
+        release_dependency="folio==0.2.0 (Reading.study_markdown + folio.js)",
+        template_name="folio/includes/study_blocks.html",
+        python_usage='Reading(..., study_markdown=\'sk: My explanation\\n\\n> [!tutor] sonnet 5.5:\\n> Why?\\n\\n```quiz\\nid: q1\\nquestion: "Question?"\\noptions:\\n  A: "First"\\n  B: "Second"\\nanswer: B\\nexplanation: "Because."\\n```\')',
+        used_in_patterns=("reading",),
+        context={
+            "quiz_count": 1,
+            "study_blocks": parse_study_markup(
+                "sk: I can explain my reasoning.\n\n"
+                "> [!tutor] sonnet 5.5:\n"
+                "> What evidence supports your claim?\n\n"
+                "```quiz\n"
+                "id: catalogue-q1\n"
+                'question: "What should you do when an automated check fails?"\n'
+                "options:\n"
+                '  A: "Ignore the warning."\n'
+                '  B: "Inspect the cause before proceeding."\n'
+                '  C: "Delete the failing test."\n'
+                '  D: "Disable verification."\n'
+                "answer: B\n"
+                'explanation: "Inspecting the root cause preserves correctness without silent regressions."\n'
+                "```"
+            ),
+        },
+    ),
+    CatalogueEntry(
+        id="mermaid-diagram",
+        title="Mermaid diagram container",
+        group="content",
+        purpose="Render offline Mermaid diagrams with responsive containment and light/dark theme sync.",
+        constraints=(
+            "Use vendored vendor/mermaid.min.js with zero external CDN requests.",
+            "Sync Mermaid theme (neutral vs dark) with [data-bs-theme].",
+        ),
+        maturity="Reference",
+        production_owner="Folio reading pattern",
+        release_dependency="folio==0.2.0 (vendor/mermaid.min.js + folio.js)",
+        template_name="folio/includes/elements/mermaid_diagram.html",
+        python_usage='Reading(..., study_markdown="```mermaid\\nflowchart LR\\n  Read --> Recall\\n```")',
+        used_in_patterns=("reading",),
+        context={"diagram": "flowchart LR\n  Read --> Recall\n  Recall --> Defend"},
+    ),
+    CatalogueEntry(
         id="boxed-abstract",
         title="Boxed abstract and top provenance",
         group="content",
@@ -257,6 +350,29 @@ CATALOGUE_ENTRIES: tuple[CatalogueEntry, ...] = (
         used_in_patterns=("reading", "dashboard", "work-journal", "work-queues"),
     ),
     CatalogueEntry(
+        id="native-dialog",
+        title="Secondary actions and native dialog",
+        group="navigation",
+        purpose="Open context switching, secondary tools and session controls from header actions.",
+        constraints=(
+            "Use a labelled native dialog with an explicit close action and Escape support.",
+            "Consumer templates own context controls and form submission.",
+        ),
+        maturity="Reference",
+        production_owner="Folio navigation",
+        release_dependency="folio==0.2.0 (Dialog, HeaderAction, folio.js)",
+        template_name="folio/includes/elements/native_dialog.html",
+        python_usage='Launchpad(..., header_actions=(HeaderAction("Session tools", "session-tools"),), dialogs=(Dialog("session-tools", "Session tools", "app/session.html"),))',
+        used_in_patterns=("launchpad",),
+        context={
+            "dialog": Dialog(
+                "catalogue-session",
+                "Session tools",
+                "folio/includes/elements/session_tools.html",
+            )
+        },
+    ),
+    CatalogueEntry(
         id="semantic-alert",
         title="Semantic feedback alert",
         group="feedback",
@@ -299,7 +415,7 @@ PATTERN_INVENTORIES: dict[PatternInventoryKey, PatternInventory] = {
         ownership_note="Consuming application initial validation scope uses a minimal 1-card Launchpad + Housekeeping queue.",
         dataclass_path="folio.contracts.Launchpad",
         template_name="folio/patterns/launchpad.html",
-        entry_ids=("theme-roles", "contained-grid", "status-badge"),
+        entry_ids=("theme-roles", "contained-grid", "status-badge", "two-door-launchpad", "native-dialog"),
         gallery_href="/?page=launchpad",
     ),
     "homepage": PatternInventory(
@@ -321,7 +437,14 @@ PATTERN_INVENTORIES: dict[PatternInventoryKey, PatternInventory] = {
         ownership_note="Shared Reading template used by both the gallery and Stage 1 note views.",
         dataclass_path="folio.contracts.Reading",
         template_name="folio/patterns/reading.html",
-        entry_ids=("theme-roles", "typography-spacing", "boxed-abstract", "disclosure-dialog"),
+        entry_ids=(
+            "theme-roles",
+            "typography-spacing",
+            "boxed-abstract",
+            "disclosure-dialog",
+            "study-blocks",
+            "mermaid-diagram",
+        ),
         gallery_href="/?page=reading",
     ),
     "dashboard": PatternInventory(
@@ -758,7 +881,19 @@ _LAYOUT_PRIMITIVES: dict[str, dict[str, str]] = {
     },
     "sk-dialog": {
         "role": "Accessible modal dialog container",
-        "pattern": "work-queues",
+        "pattern": "launchpad|work-queues",
+    },
+    "sk-two-door": {
+        "role": "Two-column two-door focus Launchpad layout",
+        "pattern": "launchpad",
+    },
+    "sk-quiz": {
+        "role": "Interactive multiple-choice retrieval block",
+        "pattern": "reading",
+    },
+    "sk-mermaid": {
+        "role": "Responsive offline Mermaid diagram container",
+        "pattern": "reading",
     },
 }
 
