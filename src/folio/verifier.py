@@ -4,11 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
-import functools
-import http.server
 import re
-import socketserver
-import threading
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -17,6 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from folio.catalogue import CatalogueValidationError, validate_catalogue
+from folio.server import _ThreadingServer, _serve_directory
 
 STATIC_DIR = Path(__file__).resolve().parent / "static" / "folio"
 STATIC_JS_DIR = STATIC_DIR / "js"
@@ -25,6 +22,7 @@ DEFAULT_TOKENS_CSS_PATH = STATIC_DIR / "css" / "sk-design-system.css"
 _SERIF_CONTAINER_CLASSES = frozenset({"article", "sk-section-block", "sk-section-list"})
 _SERIF_TEXT_TAGS = frozenset({"p", "li", "blockquote"})
 _FAUX_TAGS = frozenset({"em", "strong", "i", "b"})
+_ASSET_LINK_TAGS = frozenset({"link", "script", "img", "source", "video", "audio", "iframe", "embed", "object"})
 _TOKEN_OVERRIDE_RE = re.compile(r"--(?:sk|bs)-[a-z0-9-]+\s*:", re.IGNORECASE)
 
 _CONTRAST_JS = """() => {
@@ -142,6 +140,20 @@ class _StaticHTMLScanner(HTMLParser):
                 f"{self.source_name}: forbidden faux-style tag <{tag_l}> inside Serif reading prose"
             )
 
+        if tag_l in _ASSET_LINK_TAGS:
+            for attr_name in ("href", "src", "data"):
+                raw_val = (attr_map.get(attr_name) or "").strip()
+                if raw_val.lower().startswith("file://"):
+                    self.errors.append(
+                        f"{self.source_name}: forbidden file:// asset link in <{tag_l} {attr_name}>: {raw_val}"
+                    )
+
+        inline_style = (attr_map.get("style") or "").lower()
+        if "file://" in inline_style:
+            self.errors.append(
+                f"{self.source_name}: forbidden file:// asset link in inline style attribute"
+            )
+
         self._stack.append((tag_l, classes))
         if tag_l == "script":
             src = (attr_map.get("src") or "").strip()
@@ -168,6 +180,10 @@ class _StaticHTMLScanner(HTMLParser):
             if _TOKEN_OVERRIDE_RE.search(style_text):
                 self.errors.append(
                     f"{self.source_name}: unapproved inline <style> token override detected"
+                )
+            if "file://" in style_text.lower():
+                self.errors.append(
+                    f"{self.source_name}: forbidden file:// asset link in inline <style>"
                 )
             self._in_style = False
             self._buf = []
@@ -270,24 +286,6 @@ def _resolve_local_script_paths(
         if candidate.is_file():
             resolved.append(candidate)
     return resolved
-
-
-class _QuietHandler(http.server.SimpleHTTPRequestHandler):
-    def log_message(self, format: str, *args: object) -> None:
-        return
-
-
-class _ThreadingServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
-    daemon_threads = True
-
-
-def _serve_directory(directory: Path) -> tuple[_ThreadingServer, str]:
-    handler = functools.partial(_QuietHandler, directory=str(directory))
-    server = _ThreadingServer(("127.0.0.1", 0), handler)
-    port = server.server_address[1]
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    return server, f"http://127.0.0.1:{port}"
 
 
 def _fetch_url_text(url: str) -> str:
@@ -493,6 +491,10 @@ def _check_print_modes(page: Any, url: str) -> list[str]:
     return errors
 
 
+def _is_ignored_favicon(req_url: str) -> bool:
+    return urllib.parse.urlparse(req_url).path == "/favicon.ico"
+
+
 def _run_playwright_checks(urls: Iterable[str]) -> tuple[list[str], list[str]]:
     from playwright.sync_api import sync_playwright
 
@@ -504,9 +506,36 @@ def _run_playwright_checks(urls: Iterable[str]) -> tuple[list[str], list[str]]:
         try:
             page = browser.new_page()
             for url in urls:
-                page.set_viewport_size({"width": 1280, "height": 800})
-                page.goto(url, wait_until="load")
-                page.wait_for_function("() => document.fonts.ready")
+                failed_assets: list[str] = []
+
+                def on_request_failed(req: Any, target_url: str = url, out: list[str] = failed_assets) -> None:
+                    if not _is_ignored_favicon(req.url):
+                        out.append(
+                            f"{target_url}: failed asset request {req.url} ({req.failure or 'requestfailed'})"
+                        )
+
+                def on_response(resp: Any, target_url: str = url, out: list[str] = failed_assets) -> None:
+                    if resp.status >= 400 and not _is_ignored_favicon(resp.url):
+                        out.append(
+                            f"{target_url}: failed asset request {resp.url} (HTTP {resp.status})"
+                        )
+
+                page.on("requestfailed", on_request_failed)
+                page.on("response", on_response)
+                try:
+                    page.set_viewport_size({"width": 1280, "height": 800})
+                    page.goto(url, wait_until="load")
+                    page.wait_for_function("() => document.fonts.ready")
+                finally:
+                    page.remove_listener("requestfailed", on_request_failed)
+                    page.remove_listener("response", on_response)
+
+                errors.extend(failed_assets)
+                stylesheet_count = page.evaluate("() => document.styleSheets.length")
+                if stylesheet_count == 0:
+                    errors.append(f"{url}: stylesheetCount == 0 (no stylesheets loaded)")
+                else:
+                    checks.append(f"stylesheets:{stylesheet_count}:{url}")
 
                 vp_checks, vp_errors = _check_viewports_overflow(page, url)
                 checks.extend(vp_checks)

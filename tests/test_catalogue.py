@@ -16,6 +16,7 @@ from folio.catalogue import (
     build_catalogue_page,
     get_catalogue_entries,
     get_catalogue_entry,
+    build_class_index,
     render_entry_example,
     validate_catalogue,
 )
@@ -221,3 +222,57 @@ def test_pattern_templates_include_shared_element_partials():
         source = (templates_dir / filename).read_text(encoding="utf-8")
         for partial in partials:
             assert partial in source, f"{filename} must include {partial}"
+
+
+def test_build_class_index_exposes_classes_layout_primitives_and_tokens():
+    index = build_class_index()
+
+    assert index["version"]
+    classes = index["classes"]
+    assert isinstance(classes, list)
+    assert classes == sorted(set(classes))
+    for required_cls in (
+        "sk-logo",
+        "sk-spatial-shell",
+        "sk-section-block",
+        "page-shell",
+        "launchpad",
+        "status",
+        "status-success",
+        "btn-primary",
+        "surface",
+        "eyebrow",
+    ):
+        assert required_cls in classes
+    # Must not leak filename extensions from url(...) or decimal values
+    assert "ttf" not in classes
+    assert "css" not in classes
+
+    primitives = index["layout_primitives"]
+    for key in (
+        "page-shell",
+        "launchpad",
+        "sk-spatial-shell",
+        "reading-layout",
+        "dashboard-grid",
+        "metrics-grid",
+        "search-layout",
+        "work-layout",
+        "queue-layout",
+        "catalogue-grid",
+        "surface",
+    ):
+        assert key in primitives
+        assert primitives[key]["role"]
+
+    tokens = index["tokens"]
+    assert tokens["sk"]["--sk-paper"] == {"light": "#f7f6f2", "dark": "#17191c"}
+    assert tokens["sk"]["--sk-coral"]["light"] == "#ff4f40"
+    assert "--sk-block-gap" in tokens["sk"]
+    assert "--bs-body-bg" in tokens["bootstrap"]
+    assert tokens["palette"]["brand"] == "#FF4F40"
+    assert len(tokens["palette"]["families"]) == 10
+
+    assert "primary-action" in index["elements"]
+    assert "btn-primary" in index["elements"]["primary-action"]["classes"]
+    assert set(index["patterns"].keys()) == set(PATTERN_INVENTORIES.keys())

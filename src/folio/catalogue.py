@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
+from html.parser import HTMLParser
 from importlib import import_module
+import json
+from pathlib import Path
+import re
 from typing import Any, Literal
 
 from django.template import TemplateDoesNotExist
@@ -679,3 +683,238 @@ def build_catalogue_detail_page(
         theme=theme,
         print_mode=print_mode,
     )
+
+
+_STATIC_ROOT = Path(__file__).resolve().parent / "static" / "folio"
+_CSS_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+_ATTR_BRACKET_RE = re.compile(r"\[[^\]]*\]")
+_CLASS_SELECTOR_RE = re.compile(r"\.([A-Za-z_][A-Za-z0-9_-]*)")
+_CSS_VAR_RE = re.compile(r"(--(?:sk|bs)-[a-z0-9-]+)\s*:\s*([^;]+);", re.IGNORECASE)
+
+_LAYOUT_PRIMITIVES: dict[str, dict[str, str]] = {
+    "page-shell": {
+        "role": "Standard full-width app container (max-width 1320px)",
+        "pattern": "dashboard|search|work-queues|elements",
+    },
+    "page-head": {
+        "role": "Introductory page header block (max-width 720px)",
+        "pattern": "all",
+    },
+    "site-header": {
+        "role": "Top site navigation bar with SK logo and actions",
+        "pattern": "all",
+    },
+    "sk-site-footer": {
+        "role": "Static non-sticky site footer",
+        "pattern": "all",
+    },
+    "launchpad": {
+        "role": "Centred launchpad canvas (max-width 1040px)",
+        "pattern": "launchpad",
+    },
+    "sk-spatial-shell": {
+        "role": "Centred 760px single-column Stage 1 editorial canvas",
+        "pattern": "homepage",
+    },
+    "reading-layout": {
+        "role": "Three-column reading grid (TOC, 650px prose, marginalia)",
+        "pattern": "reading",
+    },
+    "dashboard-grid": {
+        "role": "Primary metrics/chart and attention sidebar split",
+        "pattern": "dashboard",
+    },
+    "metrics-grid": {
+        "role": "Four-column responsive KPI summary grid",
+        "pattern": "dashboard",
+    },
+    "search-layout": {
+        "role": "Facet sidebar and query builder/results split",
+        "pattern": "search",
+    },
+    "work-layout": {
+        "role": "Sticky journal pane and focused checklist split",
+        "pattern": "work-journal",
+    },
+    "queue-layout": {
+        "role": "Queue category tabs and filterable table split",
+        "pattern": "work-queues",
+    },
+    "catalogue-grid": {
+        "role": "Sticky section navigation and single-source element cards",
+        "pattern": "elements",
+    },
+    "surface": {
+        "role": "Bordered elevated surface card panel",
+        "pattern": "all",
+    },
+    "row": {
+        "role": "Bootstrap 5 responsive grid row paired with col-md-*",
+        "pattern": "contained-grid",
+    },
+    "table-responsive": {
+        "role": "Bootstrap 5 horizontal scroll wrapper for structured tables",
+        "pattern": "dashboard|work-queues",
+    },
+    "sk-dialog": {
+        "role": "Accessible modal dialog container",
+        "pattern": "work-queues",
+    },
+}
+
+
+class _HTMLClassCollector(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.classes: set[str] = set()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        for name, val in attrs:
+            if name == "class" and val:
+                self.classes.update(part for part in val.split() if part)
+
+
+def iter_css_blocks(css_text: str) -> Iterable[tuple[str, str]]:
+    """Yield (selector, body) blocks from CSS text after stripping comments."""
+    cleaned = _CSS_COMMENT_RE.sub("", css_text)
+    depth = 0
+    in_quote: str | None = None
+    escaped = False
+    buf: list[str] = []
+    selector = ""
+
+    for ch in cleaned:
+        if escaped:
+            buf.append(ch)
+            escaped = False
+            continue
+        if in_quote is not None:
+            buf.append(ch)
+            if ch == "\\":
+                escaped = True
+            elif ch == in_quote:
+                in_quote = None
+            continue
+        if ch in ("'", '"'):
+            in_quote = ch
+            buf.append(ch)
+            continue
+        if ch == "{":
+            if depth == 0:
+                selector = "".join(buf).strip()
+                buf = []
+            else:
+                buf.append(ch)
+            depth += 1
+        elif ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0:
+                    yield selector, "".join(buf)
+                    selector = ""
+                    buf = []
+                else:
+                    buf.append(ch)
+        else:
+            buf.append(ch)
+
+
+def _walk_css_rules(
+    css_text: str,
+    classes: set[str],
+    sk_tokens: dict[str, dict[str, str]],
+    bs_tokens: dict[str, dict[str, str]],
+    *,
+    extract_tokens: bool = True,
+) -> None:
+    for selector, body in iter_css_blocks(css_text):
+        stripped = selector.lstrip()
+        if not stripped:
+            continue
+        if stripped.startswith("@"):
+            lowered = stripped.lower()
+            if lowered.startswith(("@media", "@supports", "@layer")):
+                _walk_css_rules(body, classes, sk_tokens, bs_tokens, extract_tokens=False)
+            continue
+
+        cleaned_selector = _ATTR_BRACKET_RE.sub("", selector)
+        classes.update(_CLASS_SELECTOR_RE.findall(cleaned_selector))
+
+        if not extract_tokens:
+            continue
+        parts = [part.strip() for part in selector.split(",")]
+        is_light = any(part == ":root" or '[data-bs-theme="light"]' in part for part in parts)
+        is_dark = any('[data-bs-theme="dark"]' in part for part in parts)
+        if not (is_light or is_dark):
+            continue
+        mode = "dark" if is_dark and not is_light else "light"
+        for var_name, var_val in _CSS_VAR_RE.findall(body):
+            target = sk_tokens if var_name.startswith("--sk-") else bs_tokens
+            target.setdefault(var_name, {})[mode] = " ".join(var_val.split())
+
+
+def _extract_html_classes(html: str) -> list[str]:
+    collector = _HTMLClassCollector()
+    collector.feed(html)
+    collector.close()
+    return sorted(collector.classes)
+
+
+def build_class_index(
+    *,
+    version: str | None = None,
+    css_path: Path | None = None,
+    palette_path: Path | None = None,
+) -> dict[str, Any]:
+    """Generate a compact, machine-readable index of SK classes, layout primitives, and tokens."""
+    validate_catalogue()
+    if version is None:
+        from folio import __version__
+
+        resolved_version = __version__
+    else:
+        resolved_version = version
+
+    resolved_css = css_path or (_STATIC_ROOT / "css" / "sk-design-system.css")
+    resolved_palette = palette_path or (_STATIC_ROOT / "approved-palette.json")
+
+    css_cleaned = _CSS_COMMENT_RE.sub("", resolved_css.read_text(encoding="utf-8"))
+    classes: set[str] = set()
+    sk_tokens: dict[str, dict[str, str]] = {}
+    bs_tokens: dict[str, dict[str, str]] = {}
+    _walk_css_rules(css_cleaned, classes, sk_tokens, bs_tokens)
+
+    palette_data = json.loads(resolved_palette.read_text(encoding="utf-8"))
+
+    elements: dict[str, dict[str, Any]] = {}
+    for entry in CATALOGUE_ENTRIES:
+        rendered = render_entry_example(entry)
+        elements[entry.id] = {
+            "title": entry.title,
+            "group": entry.group,
+            "classes": _extract_html_classes(rendered),
+            "patterns": list(entry.used_in_patterns),
+        }
+
+    patterns: dict[str, dict[str, Any]] = {
+        key: {
+            "name": pat.name,
+            "template": pat.template_name,
+            "dataclass": pat.dataclass_path,
+            "elements": list(pat.entry_ids),
+        }
+        for key, pat in PATTERN_INVENTORIES.items()
+    }
+
+    return {
+        "version": resolved_version,
+        "classes": sorted(classes),
+        "layout_primitives": _LAYOUT_PRIMITIVES,
+        "tokens": {
+            "sk": dict(sorted(sk_tokens.items())),
+            "bootstrap": dict(sorted(bs_tokens.items())),
+            "palette": palette_data,
+        },
+        "elements": elements,
+        "patterns": patterns,
+    }

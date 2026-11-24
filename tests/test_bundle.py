@@ -43,6 +43,7 @@ def test_build_release_writes_deterministic_manifest_and_assets(tmp_path: Path):
         "elements.html",
         "catalogue.html",
         "catalogue/primary-action.html",
+        "class-index.json",
         "assets/css/sk-design-system.css",
         "assets/js/folio.js",
         "assets/approved-palette.json",
@@ -70,6 +71,12 @@ def test_build_release_writes_deterministic_manifest_and_assets(tmp_path: Path):
     reading_html = (out1 / "reading.html").read_text(encoding="utf-8")
     assert 'id="" class="article-footnote"' not in reading_html
     assert 'id="footnote-1" class="article-footnote"' in reading_html
+
+    class_index = json.loads((out1 / "class-index.json").read_text(encoding="utf-8"))
+    assert class_index["version"] == "v0.1.0"
+    assert "sk-logo" in class_index["classes"]
+    assert "--sk-paper" in class_index["tokens"]["sk"]
+    assert "page-shell" in class_index["layout_primitives"]
 
 
 def test_build_release_preserves_prior_output_on_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
