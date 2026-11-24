@@ -18,7 +18,9 @@ from typing import Any, Iterable
 
 from folio.catalogue import CatalogueValidationError, validate_catalogue
 
-STATIC_JS_DIR = Path(__file__).resolve().parent / "static" / "folio" / "js"
+STATIC_DIR = Path(__file__).resolve().parent / "static" / "folio"
+STATIC_JS_DIR = STATIC_DIR / "js"
+DEFAULT_TOKENS_CSS_PATH = STATIC_DIR / "css" / "sk-design-system.css"
 
 _SERIF_CONTAINER_CLASSES = frozenset({"article", "sk-section-block", "sk-section-list"})
 _SERIF_TEXT_TAGS = frozenset({"p", "li", "blockquote"})
@@ -111,6 +113,10 @@ class VerificationResult:
     target: str
     checks: tuple[str, ...]
     errors: tuple[str, ...]
+
+    @property
+    def drifted(self) -> bool:
+        return not self.passed
 
 
 class _StaticHTMLScanner(HTMLParser):
@@ -573,29 +579,51 @@ def verify_target(
                     server, base = _serve_directory(path.parent)
                     playwright_urls = [f"{base}/{path.name}"]
             else:
-                html_files = sorted(path.rglob("*.html"))
-                if not html_files:
-                    errors.append(f"No HTML files found in {path}")
-                js_candidates: list[Path] = sorted(path.rglob("*.js"))
-                for html_file in html_files:
-                    rel = html_file.relative_to(path).as_posix()
-                    html_errors, script_srcs = _scan_html_and_collect_scripts(
-                        html_file.read_text(encoding="utf-8"),
-                        rel,
-                    )
-                    errors.extend(html_errors)
-                    js_candidates.extend(
-                        _resolve_local_script_paths(script_srcs, html_file.parent, path)
-                    )
-                ext_js_errors, ext_js_count = _scan_local_js_files(js_candidates, base_dir=path)
-                errors.extend(ext_js_errors)
-                checks.append(f"static-html:{len(html_files)}")
-                checks.append(f"external-js:{ext_js_count}")
-                if run_playwright and html_files:
-                    server, base = _serve_directory(path)
-                    playwright_urls = [
-                        f"{base}/{f.relative_to(path).as_posix()}" for f in html_files
-                    ]
+                if (path / ".obsidian").is_dir():
+                    from folio.obsidian import build_obsidian_theme, verify_obsidian_vault
+
+                    theme = build_obsidian_theme(DEFAULT_TOKENS_CSS_PATH.read_text(encoding="utf-8"))
+                    obs_res = verify_obsidian_vault(theme, path)
+                    checks.extend(obs_res.checks)
+                    errors.extend(obs_res.errors)
+                else:
+                    html_files = sorted(path.rglob("*.html"))
+                    if not html_files:
+                        errors.append(f"No HTML files found in {path}")
+                    js_candidates: list[Path] = sorted(path.rglob("*.js"))
+                    for html_file in html_files:
+                        rel = html_file.relative_to(path).as_posix()
+                        html_errors, script_srcs = _scan_html_and_collect_scripts(
+                            html_file.read_text(encoding="utf-8"),
+                            rel,
+                        )
+                        errors.extend(html_errors)
+                        js_candidates.extend(
+                            _resolve_local_script_paths(script_srcs, html_file.parent, path)
+                        )
+                    ext_js_errors, ext_js_count = _scan_local_js_files(js_candidates, base_dir=path)
+                    errors.extend(ext_js_errors)
+                    checks.append(f"static-html:{len(html_files)}")
+                    checks.append(f"external-js:{ext_js_count}")
+                    if (path / "obsidian").is_dir():
+                        from folio.obsidian import build_obsidian_theme
+
+                        expected_theme = build_obsidian_theme(
+                            DEFAULT_TOKENS_CSS_PATH.read_text(encoding="utf-8")
+                        )
+                        dist_css = path / "obsidian" / "theme.css"
+                        dist_manifest = path / "obsidian" / "manifest.json"
+                        if not dist_css.is_file() or dist_css.read_text(encoding="utf-8") != expected_theme.theme_css:
+                            errors.append(f"obsidian/theme.css drift detected in {path / 'obsidian'}")
+                        elif not dist_manifest.is_file() or dist_manifest.read_text(encoding="utf-8") != expected_theme.manifest_json:
+                            errors.append(f"obsidian/manifest.json drift detected in {path / 'obsidian'}")
+                        else:
+                            checks.append("obsidian-dist:valid")
+                    if run_playwright and html_files:
+                        server, base = _serve_directory(path)
+                        playwright_urls = [
+                            f"{base}/{f.relative_to(path).as_posix()}" for f in html_files
+                        ]
 
         if run_playwright and playwright_urls:
             try:
