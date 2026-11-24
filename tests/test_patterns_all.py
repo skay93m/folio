@@ -91,6 +91,65 @@ def test_study_markup_retrieval_and_tutorial_turns():
         replace(page, study_markdown="```quiz\nMissing fields\n```")
 
 
+def test_quiz_id_validation_uniqueness_and_distinct_fallback_names():
+    no_ids = Reading(
+        eyebrow="Lesson",
+        title="Two quizzes",
+        meta=(),
+        study_markdown=(
+            "```quiz\n"
+            'question: "First?"\n'
+            "options:\n"
+            '  A: "Yes"\n'
+            '  B: "No"\n'
+            "answer: A\n"
+            'explanation: "First explanation."\n'
+            "```\n\n"
+            "```quiz\n"
+            "id: quiz-2\n"
+            'question: "Second?"\n'
+            "options:\n"
+            '  A: "Yes"\n'
+            '  B: "No"\n'
+            "answer: B\n"
+            'explanation: "Second explanation."\n'
+            "```\n\n"
+            "```quiz\n"
+            'question: "Third?"\n'
+            "options:\n"
+            '  A: "Yes"\n'
+            '  B: "No"\n'
+            "answer: A\n"
+            'explanation: "Third explanation."\n'
+            "```"
+        ),
+    )
+    html = folio.render_static(no_ids)
+    names = re.findall(r'name="(sk-quiz-[^"]+)"', html)
+    assert len(names) == 6  # 2 radios per quiz x 3 quizzes
+    assert len(set(names)) == 3
+    assert set(names) == {"sk-quiz-quiz-1", "sk-quiz-quiz-2", "sk-quiz-quiz-3"}
+
+    with pytest.raises(ValueError, match="duplicate"):
+        Reading(
+            eyebrow="Lesson",
+            title="Duplicate IDs",
+            meta=(),
+            study_markdown=(
+                "```quiz\nid: dup-1\nquestion: \"Q1\"\noptions:\n  A: \"1\"\n  B: \"2\"\nanswer: A\nexplanation: \"E1\"\n```\n\n"
+                "```quiz\nid: dup-1\nquestion: \"Q2\"\noptions:\n  A: \"1\"\n  B: \"2\"\nanswer: B\nexplanation: \"E2\"\n```"
+            ),
+        )
+
+    with pytest.raises(ValueError, match="ID"):
+        Reading(
+            eyebrow="Lesson",
+            title="Bad ID",
+            meta=(),
+            study_markdown='```quiz\nid: 123 invalid\nquestion: "Q1"\noptions:\n  A: "1"\n  B: "2"\nanswer: A\nexplanation: "E1"\n```',
+        )
+
+
 @pytest.mark.parametrize(
     "source",
     [

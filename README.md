@@ -67,4 +67,4 @@ flowchart LR
   and `Reading.body_html` (`.sk-mermaid` / `.mermaid` / `pre > code.language-mermaid`)
   render offline via vendored `vendor/mermaid.min.js` with zero external CDN requests
   and sync Mermaid's `neutral` vs `dark` theme automatically with `[data-bs-theme]`
-  and `beforeprint` / `afterprint`.
+  (with synchronous `@media print` contrast adjustment for dark-mode diagrams).

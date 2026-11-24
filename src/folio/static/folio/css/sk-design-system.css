@@ -640,7 +640,7 @@ p {
 .sk-quiz-option-key {
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 400;
   flex: 0 0 auto;
 }
 
@@ -685,8 +685,7 @@ p {
   border-top: 1px solid var(--sk-border);
 }
 
-.sk-quiz label,
-.sk-quiz summary {
+.sk-quiz label {
   font-family: "IBM Plex Sans", sans-serif;
 }
 
@@ -2203,17 +2202,18 @@ figcaption {
     color: #000000 !important;
     border: 1px solid #000000 !important;
   }
-  .sk-quiz textarea,
   .sk-quiz-actions {
     display: none;
   }
-  .sk-quiz details > *,
   .sk-quiz-explanation {
     display: block !important;
   }
   .sk-mermaid {
     break-inside: avoid;
     background: #ffffff !important;
+  }
+  html[data-bs-theme="dark"] .sk-mermaid svg {
+    filter: invert(1) hue-rotate(180deg);
   }
   html[data-print-mode="colour"] .coral-callout {
     background: #ff4f40 !important;

@@ -821,7 +821,7 @@
     updateQuizScore();
   });
 
-  // 11. Offline Mermaid diagram rendering, [data-bs-theme] sync, and print legibility
+  // 11. Offline Mermaid diagram rendering and [data-bs-theme] sync
   function upgradeCodeMermaidBlocks() {
     document.querySelectorAll("pre > code.language-mermaid").forEach(function (codeEl) {
       var preEl = codeEl.parentElement;
@@ -874,20 +874,6 @@
   }
 
   window.folioRenderMermaid = renderMermaidDiagrams;
-
-  var mermaidPrintRestore = false;
-  window.addEventListener("beforeprint", function () {
-    if (root.dataset.bsTheme === "dark" && document.querySelector(".mermaid")) {
-      mermaidPrintRestore = true;
-      renderMermaidDiagrams(true, "neutral");
-    }
-  });
-  window.addEventListener("afterprint", function () {
-    if (mermaidPrintRestore) {
-      mermaidPrintRestore = false;
-      renderMermaidDiagrams(true);
-    }
-  });
 
   if (typeof MutationObserver === "function") {
     var themeObserver = new MutationObserver(function (mutations) {

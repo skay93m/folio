@@ -10,7 +10,9 @@ accept raw HTML or attempt to replace a general Markdown renderer.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+
+from folio.contracts import require_html_id
 
 _OPTION_KEY_RE = re.compile(r"^([A-D])\s*:\s*(.+)$")
 _SCALAR_KEY_RE = re.compile(r"^(id|question|answer|explanation)\s*:\s*(.*)$")
@@ -55,7 +57,7 @@ def _unquote_yaml_scalar(raw: str) -> str:
 
 
 def _parse_quiz_block(content: list[str]) -> StudyBlock:
-    """Parse structured YAML-like TeachArtifact quiz fields with strict validation."""
+    """Parse structured YAML-like study quiz fields with strict validation."""
     fields: dict[str, str] = {}
     options: list[tuple[str, str]] = []
     seen_option_keys: set[str] = set()
@@ -111,6 +113,8 @@ def _parse_quiz_block(content: list[str]) -> StudyBlock:
         raise ValueError("quiz answer must match one of the declared option keys")
     if not explanation:
         raise ValueError("quiz requires a non-empty explanation")
+    if quiz_id:
+        require_html_id(quiz_id)
 
     return StudyBlock(
         kind="quiz",
@@ -154,6 +158,8 @@ def parse_study_markup(source: str) -> tuple[StudyBlock, ...]:
     """Validate and parse the documented study dialect without HTML execution."""
     lines = source.splitlines()
     blocks: list[StudyBlock] = []
+    seen_quiz_ids: set[str] = set()
+    quiz_counter = 0
     index = 0
     while index < len(lines):
         line = lines[index].strip()
@@ -162,7 +168,20 @@ def parse_study_markup(source: str) -> tuple[StudyBlock, ...]:
             continue
         if line == "```quiz":
             content, index = _read_fenced_block(lines, index, "quiz")
-            blocks.append(_parse_quiz_block(content))
+            quiz_block = _parse_quiz_block(content)
+            if quiz_block.quiz_id:
+                if quiz_block.quiz_id in seen_quiz_ids:
+                    raise ValueError(f"duplicate quiz id {quiz_block.quiz_id!r}")
+                seen_quiz_ids.add(quiz_block.quiz_id)
+            else:
+                while True:
+                    quiz_counter += 1
+                    candidate = f"quiz-{quiz_counter}"
+                    if candidate not in seen_quiz_ids:
+                        break
+                seen_quiz_ids.add(candidate)
+                quiz_block = replace(quiz_block, quiz_id=candidate)
+            blocks.append(quiz_block)
         elif line == "```mermaid":
             content, index = _read_fenced_block(lines, index, "mermaid")
             diagram = "\n".join(content).strip()

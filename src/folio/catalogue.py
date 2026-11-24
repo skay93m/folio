@@ -881,7 +881,7 @@ _LAYOUT_PRIMITIVES: dict[str, dict[str, str]] = {
         "pattern": "launchpad",
     },
     "sk-quiz": {
-        "role": "Interactive free-recall retrieval block",
+        "role": "Interactive multiple-choice retrieval block",
         "pattern": "reading",
     },
     "sk-mermaid": {

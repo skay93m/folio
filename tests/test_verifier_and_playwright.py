@@ -150,14 +150,12 @@ def test_playwright_two_doors_dialog_and_study_primitives(page: Page, tmp_path: 
         dark_svg_html = page.locator(".sk-mermaid .mermaid").inner_html()
         assert dark_svg_html != light_svg_html
 
-        page.evaluate("() => window.dispatchEvent(new Event('beforeprint'))")
-        page.wait_for_function(
-            "() => document.querySelector('.sk-mermaid .mermaid')?.getAttribute('data-mermaid-theme') === 'neutral' && document.querySelector('.sk-mermaid .mermaid svg') !== null"
+        page.emulate_media(media="print")
+        print_filter = page.locator(".sk-mermaid .mermaid svg").evaluate(
+            "el => getComputedStyle(el).filter"
         )
-        page.evaluate("() => window.dispatchEvent(new Event('afterprint'))")
-        page.wait_for_function(
-            "() => document.querySelector('.sk-mermaid .mermaid')?.getAttribute('data-mermaid-theme') === 'dark' && document.querySelector('.sk-mermaid .mermaid svg') !== null"
-        )
+        assert "invert(1)" in print_filter
+        page.emulate_media(media="screen")
 
         page.set_viewport_size({"width": 390, "height": 850})
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
@@ -358,6 +356,19 @@ def test_verifier_rejects_negative_static_and_overflow_fixtures(tmp_path: Path):
     res_unrendered = verify_target(unrendered_mermaid, run_playwright=True, check_catalogue=False)
     assert not res_unrendered.passed
     assert any("mermaid" in err.lower() and "svg" in err.lower() for err in res_unrendered.errors)
+
+    # 13. Un-upgraded pre > code.language-mermaid without SVG caught by Playwright check
+    unupgraded_code_mermaid = tmp_path / "unupgraded-mermaid"
+    unupgraded_code_mermaid.mkdir()
+    (unupgraded_code_mermaid / "index.html").write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        "<style>body { margin: 0; }</style>"
+        '</head><body><main><pre><code class="language-mermaid">flowchart LR\nA-->B</code></pre></main></body></html>',
+        encoding="utf-8",
+    )
+    res_unupgraded = verify_target(unupgraded_code_mermaid, run_playwright=True, check_catalogue=False)
+    assert not res_unupgraded.passed
+    assert any("mermaid" in err.lower() and "svg" in err.lower() for err in res_unupgraded.errors)
 
 
 def test_verifier_passes_on_built_dist_and_live_server(tmp_path: Path, live_server):
