@@ -52,26 +52,24 @@ def test_prototype_server_serves_prototype_and_design_system_assets(tmp_path: Pa
         server.server_close()
 
 
-def test_serve_directory_adapter_exposes_assets_for_standalone_prototype(
-    tmp_path: Path, page: Page
-):
+def test_serve_directory_adapter_exposes_assets_for_standalone_prototype(tmp_path: Path, page: Page):
     proto_dir = tmp_path / "standalone"
     proto_dir.mkdir()
     proto_html = proto_dir / "index.html"
     proto_html.write_text(
         '<!doctype html><html lang="en-GB" data-bs-theme="light"><head>'
         '<meta charset="utf-8" />'
-        '<title>Standalone prototype</title>'
+        "<title>Standalone prototype</title>"
         '<link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />'
         '<link rel="stylesheet" href="assets/css/sk-design-system.css" />'
-        '</head><body>'
+        "</head><body>"
         '<main id="main" class="page-shell">'
         '<h1 class="mt-0">Prototype heading</h1>'
         '<button type="button" class="btn btn-primary">Continue</button>'
-        '</main>'
+        "</main>"
         '<script src="assets/vendor/bootstrap.bundle.min.js"></script>'
         '<script src="assets/js/folio.js"></script>'
-        '</body></html>',
+        "</body></html>",
         encoding="utf-8",
     )
 
@@ -109,9 +107,7 @@ def test_prototype_server_supports_explicit_assets_dir_override(tmp_path: Path):
 
     custom_assets = tmp_path / "custom-assets"
     (custom_assets / "css").mkdir(parents=True)
-    (custom_assets / "css" / "sk-design-system.css").write_text(
-        "/* custom override */\n", encoding="utf-8"
-    )
+    (custom_assets / "css" / "sk-design-system.css").write_text("/* custom override */\n", encoding="utf-8")
 
     server, base_url = start_prototype_server(proto_dir, assets_dir=custom_assets)
     try:

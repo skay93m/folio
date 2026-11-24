@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+import json
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from html.parser import HTMLParser
 from importlib import import_module
-import json
 from pathlib import Path
-import re
 from typing import Any, Literal
 
 from django.template import TemplateDoesNotExist
@@ -437,7 +437,14 @@ PATTERN_INVENTORIES: dict[PatternInventoryKey, PatternInventory] = {
         ownership_note="Shared Reading template used by both the gallery and Stage 1 note views.",
         dataclass_path="folio.contracts.Reading",
         template_name="folio/patterns/reading.html",
-        entry_ids=("theme-roles", "typography-spacing", "boxed-abstract", "disclosure-dialog", "study-blocks", "mermaid-diagram"),
+        entry_ids=(
+            "theme-roles",
+            "typography-spacing",
+            "boxed-abstract",
+            "disclosure-dialog",
+            "study-blocks",
+            "mermaid-diagram",
+        ),
         gallery_href="/?page=reading",
     ),
     "dashboard": PatternInventory(

@@ -136,8 +136,8 @@ def test_quiz_id_validation_uniqueness_and_distinct_fallback_names():
             title="Duplicate IDs",
             meta=(),
             study_markdown=(
-                "```quiz\nid: dup-1\nquestion: \"Q1\"\noptions:\n  A: \"1\"\n  B: \"2\"\nanswer: A\nexplanation: \"E1\"\n```\n\n"
-                "```quiz\nid: dup-1\nquestion: \"Q2\"\noptions:\n  A: \"1\"\n  B: \"2\"\nanswer: B\nexplanation: \"E2\"\n```"
+                '```quiz\nid: dup-1\nquestion: "Q1"\noptions:\n  A: "1"\n  B: "2"\nanswer: A\nexplanation: "E1"\n```\n\n'
+                '```quiz\nid: dup-1\nquestion: "Q2"\noptions:\n  A: "1"\n  B: "2"\nanswer: B\nexplanation: "E2"\n```'
             ),
         )
 
@@ -153,10 +153,10 @@ def test_quiz_id_validation_uniqueness_and_distinct_fallback_names():
 @pytest.mark.parametrize(
     "source",
     [
-        "```quiz\nid: q1\nquestion: \"Q?\"\noptions:\n  A: \"1\"\n  B: \"2\"\nanswer: B\nexplanation: \"E\"\n",
-        "```quiz\nid: q1\nquestion: \"Q?\"\noptions:\n  A: \"1\"\n  B: \"2\"\nanswer: Z\nexplanation: \"E\"\n```",
-        "```quiz\nid: q1\nquestion: \"Q?\"\noptions:\n  A: \"1\"\nanswer: A\nexplanation: \"E\"\n```",
-        "```quiz\nid: q1\nquestion: \"Q?\"\noptions:\n  A: \"1\"\n  B: \"2\"\nanswer: A\n```",
+        '```quiz\nid: q1\nquestion: "Q?"\noptions:\n  A: "1"\n  B: "2"\nanswer: B\nexplanation: "E"\n',
+        '```quiz\nid: q1\nquestion: "Q?"\noptions:\n  A: "1"\n  B: "2"\nanswer: Z\nexplanation: "E"\n```',
+        '```quiz\nid: q1\nquestion: "Q?"\noptions:\n  A: "1"\nanswer: A\nexplanation: "E"\n```',
+        '```quiz\nid: q1\nquestion: "Q?"\noptions:\n  A: "1"\n  B: "2"\nanswer: A\n```',
         "```mermaid\nflowchart LR\nA --> B",
         "```mermaid\n\n```",
         "> [!tutor]",
@@ -222,11 +222,19 @@ def test_mermaid_diagram_container_and_offline_script_inclusion():
 
 @pytest.mark.parametrize("pattern", ["reading", "homepage"])
 def test_editorial_metadata_and_script_opt_out(pattern):
-    page = replace(get_pattern_page(pattern), lang="cy", meta_description='A "quoted" description',
-                   canonical_url="https://example.com/note/", author_meta="Sample Author",
-                   citation_date="2026-11-23", include_scripts=False)
-    for html in (folio.render_static(page, extra_context={"page_title": "Site title"}),
-                 folio.render(RequestFactory().get("/"), page).content.decode()):
+    page = replace(
+        get_pattern_page(pattern),
+        lang="cy",
+        meta_description='A "quoted" description',
+        canonical_url="https://example.com/note/",
+        author_meta="Sample Author",
+        citation_date="2026-11-23",
+        include_scripts=False,
+    )
+    for html in (
+        folio.render_static(page, extra_context={"page_title": "Site title"}),
+        folio.render(RequestFactory().get("/"), page).content.decode(),
+    ):
         assert '<html lang="cy"' in html
         assert 'name="description" content="A &quot;quoted&quot; description"' in html
         assert 'name="author" content="Sample Author"' in html
@@ -234,12 +242,12 @@ def test_editorial_metadata_and_script_opt_out(pattern):
         assert f'name="citation_title" content="{page.title}"' in html
         assert 'name="citation_date" content="2026-11-23"' in html
         assert 'rel="canonical" href="https://example.com/note/"' in html
-        assert '<script' not in html
+        assert "<script" not in html
     with pytest.raises(ValueError, match="lang"):
         replace(page, lang=" ")
     default_html = folio.render_static(get_pattern_page(pattern))
     assert '<html lang="en-GB"' in default_html
-    assert '<script src=' in default_html
+    assert "<script src=" in default_html
     assert 'name="citation_title"' not in default_html
 
 
@@ -264,12 +272,16 @@ def test_public_sources_use_generic_consumer_names():
 
 
 def test_markdown_reading_renders_without_synthetic_sections():
-    page = Reading(eyebrow="Note", title="A Markdown note", meta=(),
-                   body_html='<p>A note with <a href="/source/">a source</a>.</p>')
+    page = Reading(
+        eyebrow="Note",
+        title="A Markdown note",
+        meta=(),
+        body_html='<p>A note with <a href="/source/">a source</a>.</p>',
+    )
     html = folio.render_static(page)
     assert '<div class="sk-reading-body"><p>A note with' in html
     assert 'class="abstract"' not in html
-    assert '>Contents</div>' not in html
+    assert ">Contents</div>" not in html
     with pytest.raises(ValueError, match="sections|body_html"):
         Reading(eyebrow="Note", title="Empty note", meta=(), body_html="  ")
     with pytest.raises(ValueError, match="faux-style Serif"):
@@ -381,9 +393,7 @@ def test_required_aria_labels_and_semantic_roles_validated_across_patterns():
             chart_subtitle="Sample",
             chart_aria_label=" ",
             attention_heading="Attention",
-            attention_items=(
-                AttentionItem("Check", "Desc", "Open", "?page=queue", "warning"),
-            ),
+            attention_items=(AttentionItem("Check", "Desc", "Open", "?page=queue", "warning"),),
             direction_eyebrow="Direction",
             direction_text="Stay focused.",
         )

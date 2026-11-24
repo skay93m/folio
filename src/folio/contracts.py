@@ -12,9 +12,7 @@ SemanticRole = Literal["success", "warning", "error", "info", "neutral"]
 
 VALID_THEMES: frozenset[str] = frozenset({"light", "dark"})
 VALID_PRINT_MODES: frozenset[str] = frozenset({"colour", "greyscale", "black-white"})
-VALID_SEMANTIC_ROLES: frozenset[str] = frozenset(
-    {"success", "warning", "error", "info", "neutral"}
-)
+VALID_SEMANTIC_ROLES: frozenset[str] = frozenset({"success", "warning", "error", "info", "neutral"})
 
 _FAUX_SERIF_TAG_RE = re.compile(r"</?(?:em|strong|i|b)\b", re.IGNORECASE)
 
@@ -33,9 +31,7 @@ def require_sentence_case(heading: str, field_name: str) -> str:
     require_non_empty(heading, field_name)
     letters = [ch for ch in heading if ch.isalpha()]
     if len(letters) >= 2 and heading == heading.upper():
-        raise ValueError(
-            f"{field_name} must use sentence-case rather than all-caps: {heading!r}"
-        )
+        raise ValueError(f"{field_name} must use sentence-case rather than all-caps: {heading!r}")
     return heading
 
 
@@ -45,9 +41,7 @@ def forbid_faux_serif_tags(text: str, field_name: str) -> str:
         raise TypeError(f"{field_name} must be a str, got {type(text).__name__}")
     match = _FAUX_SERIF_TAG_RE.search(text)
     if match:
-        raise ValueError(
-            f"{field_name} must not contain faux-style Serif tag {match.group(0)!r}"
-        )
+        raise ValueError(f"{field_name} must not contain faux-style Serif tag {match.group(0)!r}")
     return text
 
 
@@ -61,18 +55,14 @@ def validate_theme(theme: str) -> ThemeMode:
 def validate_print_mode(print_mode: str) -> PrintMode:
     """Validate that print_mode is 'colour', 'greyscale', or 'black-white'."""
     if print_mode not in VALID_PRINT_MODES:
-        raise ValueError(
-            f"print_mode must be one of {sorted(VALID_PRINT_MODES)}, got {print_mode!r}"
-        )
+        raise ValueError(f"print_mode must be one of {sorted(VALID_PRINT_MODES)}, got {print_mode!r}")
     return print_mode  # type: ignore[return-value]
 
 
 def validate_semantic_role(role: str, field_name: str = "status_role") -> SemanticRole:
     """Validate semantic state role against the five ADR 0020 roles."""
     if role not in VALID_SEMANTIC_ROLES:
-        raise ValueError(
-            f"{field_name} must be a valid semantic role {sorted(VALID_SEMANTIC_ROLES)}, got {role!r}"
-        )
+        raise ValueError(f"{field_name} must be a valid semantic role {sorted(VALID_SEMANTIC_ROLES)}, got {role!r}")
     return role  # type: ignore[return-value]
 
 
@@ -113,9 +103,7 @@ class LaunchpadCard:
 def require_html_id(value: str) -> str:
     """Keep generated dialog IDs usable as HTML identifiers."""
     if not isinstance(value, str) or not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_-]*", value):
-        raise ValueError(
-            "dialog ID must start with a letter and contain letters, digits, hyphens or underscores"
-        )
+        raise ValueError("dialog ID must start with a letter and contain letters, digits, hyphens or underscores")
     return value
 
 
@@ -435,7 +423,7 @@ class TrendSeries:
 
     @property
     def table_rows(self) -> tuple[tuple[str, int, int], ...]:
-        return tuple(zip(self.labels, self.completed, self.arrived))
+        return tuple(zip(self.labels, self.completed, self.arrived, strict=True))
 
     def __post_init__(self) -> None:
         require_non_empty(self.period_key, "TrendSeries.period_key")
@@ -744,9 +732,7 @@ class WorkQueue:
     search_aria_label: str = "Search this queue"
     status_aria_label: str = "Work status"
     table_caption: str = "Work items in the selected queue"
-    scope_note: str = (
-        "Consuming application initial validation scope: concise Launchpad + Housekeeping queue."
-    )
+    scope_note: str = "Consuming application initial validation scope: concise Launchpad + Housekeeping queue."
     home_href: str = "?page=launchpad"
     home_aria_label: str = "SK launchpad"
     theme: ThemeMode = "light"

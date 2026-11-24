@@ -14,9 +14,9 @@ from folio.catalogue import (
     PatternInventory,
     build_catalogue_detail_page,
     build_catalogue_page,
+    build_class_index,
     get_catalogue_entries,
     get_catalogue_entry,
-    build_class_index,
     render_entry_example,
     validate_catalogue,
 )
@@ -142,7 +142,10 @@ def test_catalogue_views_render_single_source_markup_and_snippet():
     assert detail_resp.status_code == 200
     detail_body = detail_resp.content.decode("utf-8")
     assert "Primary action" in detail_body
-    assert "&lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot;&gt;Review work&lt;/button&gt;" in detail_body
+    assert (
+        "&lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot;&gt;Review work&lt;/button&gt;"
+        in detail_body
+    )
     assert '<button type="button" class="btn btn-primary">Review work</button>' in detail_body
 
 

@@ -39,9 +39,7 @@ _REQUIRED_CORE_TOKENS: tuple[str, ...] = (
 )
 
 _REQUIRED_TOKENS: tuple[str, ...] = _REQUIRED_CORE_TOKENS + tuple(
-    f"--sk-family-{family}-{kind}"
-    for family in _ROLE_FAMILIES
-    for kind in ("surface", "mark")
+    f"--sk-family-{family}-{kind}" for family in _ROLE_FAMILIES for kind in ("surface", "mark")
 )
 
 _FONT_SPECS: tuple[tuple[str, str, str], ...] = (
@@ -147,8 +145,7 @@ def _check_wcag_contrast(tokens: dict[str, str]) -> None:
         ratio = _contrast_ratio(_hex_to_rgb(fg_hex), _hex_to_rgb(bg_hex))
         if ratio < 4.5:
             raise ValueError(
-                f"WCAG 2.2 AA contrast failure for {fg_name} ({fg_hex}) on "
-                f"{bg_name} ({bg_hex}): {ratio:.2f}:1 < 4.5:1"
+                f"WCAG 2.2 AA contrast failure for {fg_name} ({fg_hex}) on {bg_name} ({bg_hex}): {ratio:.2f}:1 < 4.5:1"
             )
 
 
@@ -159,12 +156,12 @@ def _build_font_faces(fonts_dir: Path) -> str:
         if not b64:
             continue
         blocks.append(
-            f'@font-face {{\n'
+            f"@font-face {{\n"
             f'  font-family: "{family}";\n'
             f'  src: url("{b64}") format("truetype");\n'
-            f'  font-weight: {weight};\n'
-            f'  font-style: normal;\n'
-            f'}}'
+            f"  font-weight: {weight};\n"
+            f"  font-style: normal;\n"
+            f"}}"
         )
     return "\n\n".join(blocks)
 
@@ -379,9 +376,7 @@ def sync_obsidian_theme(
             appearance_data["cssTheme"] = "folio"
             snippets = appearance_data.get("enabledCssSnippets")
             if isinstance(snippets, list) and "dissertation-spacing" in snippets:
-                appearance_data["enabledCssSnippets"] = [
-                    s for s in snippets if s != "dissertation-spacing"
-                ]
+                appearance_data["enabledCssSnippets"] = [s for s in snippets if s != "dissertation-spacing"]
             appearance_path.write_text(json.dumps(appearance_data, indent=2), encoding="utf-8")
 
             snippet_path = obsidian_dir / "snippets" / "dissertation-spacing.css"

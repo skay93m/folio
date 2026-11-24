@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-import pytest
 from playwright.sync_api import Page
 
 from folio.bundle import build_release
@@ -152,19 +151,19 @@ def test_playwright_two_doors_dialog_and_study_primitives(page: Page, tmp_path: 
 
         page.locator('.sk-quiz input[type="radio"][value="B"]').check()
         page.emulate_media(media="print")
-        print_filter = page.locator(".sk-mermaid .mermaid svg").evaluate(
-            "el => getComputedStyle(el).filter"
-        )
+        print_filter = page.locator(".sk-mermaid .mermaid svg").evaluate("el => getComputedStyle(el).filter")
         assert "invert(1)" in print_filter
         assert page.locator(".sk-quiz-feedback").is_visible()
         assert not page.locator("[data-quiz-reset]").is_visible()
-        assert page.locator(".sk-quiz-option.is-correct").evaluate(
-            "el => getComputedStyle(el).backgroundColor"
-        ) == "rgb(216, 243, 236)"
+        assert (
+            page.locator(".sk-quiz-option.is-correct").evaluate("el => getComputedStyle(el).backgroundColor")
+            == "rgb(216, 243, 236)"
+        )
         page.evaluate("() => { document.documentElement.dataset.printMode = 'greyscale'; }")
-        assert page.locator(".sk-quiz-option.is-correct").evaluate(
-            "el => getComputedStyle(el).backgroundColor"
-        ) == "rgb(238, 238, 238)"
+        assert (
+            page.locator(".sk-quiz-option.is-correct").evaluate("el => getComputedStyle(el).backgroundColor")
+            == "rgb(238, 238, 238)"
+        )
         page.evaluate("() => { document.documentElement.dataset.printMode = 'colour'; }")
         page.emulate_media(media="screen")
 
@@ -180,14 +179,19 @@ def test_playwright_two_doors_dialog_and_study_primitives(page: Page, tmp_path: 
 def test_playwright_scriptless_markdown_consumer(page: Page):
     from dataclasses import replace
 
-    from folio import Reading, HomepageNoteItem, render_static
+    from folio import HomepageNoteItem, Reading, render_static
     from folio.fixtures import build_homepage
 
     reading = Reading(
-        eyebrow="Note", title="A clean article title", meta=(),
+        eyebrow="Note",
+        title="A clean article title",
+        meta=(),
         body_html='<p>Markdown prose with <a href="/source/">a source</a>.</p>',
-        include_scripts=False, author_meta="Sample Author", citation_date="2026-11-23",
-        meta_description="A short note", canonical_url="https://example.com/note/",
+        include_scripts=False,
+        author_meta="Sample Author",
+        citation_date="2026-11-23",
+        meta_description="A short note",
+        canonical_url="https://example.com/note/",
     )
     page.set_content(render_static(reading, extra_context={"page_title": "Note · Site"}))
     assert page.locator(".sk-reading-body a").inner_text() == "a source"
@@ -199,9 +203,11 @@ def test_playwright_scriptless_markdown_consumer(page: Page):
     assert page.locator('meta[name="description"]').get_attribute("content") == "A short note"
     assert page.locator('link[rel="canonical"]').get_attribute("href") == "https://example.com/note/"
 
-    homepage = replace(build_homepage(), include_scripts=False, long_form_notes=(
-        HomepageNoteItem("essay", "A longer essay", "23 November 2026", "Summary.", "/essay/"),
-    ))
+    homepage = replace(
+        build_homepage(),
+        include_scripts=False,
+        long_form_notes=(HomepageNoteItem("essay", "A longer essay", "23 November 2026", "Summary.", "/essay/"),),
+    )
     page.set_content(render_static(homepage))
     assert page.locator('.sk-section-list a[href="/essay/"]').inner_text() == "A longer essay"
     assert page.locator("script").count() == 0
@@ -317,8 +323,7 @@ def test_verifier_rejects_negative_static_and_overflow_fixtures(tmp_path: Path):
     # 9. Zero loaded stylesheets (stylesheetCount == 0) caught by Playwright
     no_styles = tmp_path / "no-styles.html"
     no_styles.write_text(
-        '<!doctype html><html lang="en" data-bs-theme="light"><body>'
-        "<main><p>Unstyled page</p></main></body></html>",
+        '<!doctype html><html lang="en" data-bs-theme="light"><body><main><p>Unstyled page</p></main></body></html>',
         encoding="utf-8",
     )
     res_no_styles = verify_target(no_styles, run_playwright=True, check_catalogue=False)
@@ -417,9 +422,7 @@ def test_playwright_all_seven_patterns_interactions_and_print(page: Page, live_s
 
     # 3. Reading pattern + print modes
     page.goto(f"{live_server.url}/?page=reading")
-    assert "IBM Plex Serif" in page.evaluate(
-        "() => getComputedStyle(document.querySelector('.article p')).fontFamily"
-    )
+    assert "IBM Plex Serif" in page.evaluate("() => getComputedStyle(document.querySelector('.article p')).fontFamily")
     for mode in ("colour", "greyscale", "black-white"):
         page.evaluate(f"() => {{ document.documentElement.dataset.printMode = '{mode}'; }}")
         page.emulate_media(media="print")
@@ -521,6 +524,7 @@ def test_playwright_homepage_d1_dark_theme_and_search_initial_filter(page: Page,
 
     # 2. SearchIndex with initial query & active_filters invokes runSearchFilter() on load
     import shutil
+
     from folio import render_static
     from folio.bundle import STATIC_SOURCE_DIR
     from folio.contracts import SearchFilter, SearchIndex

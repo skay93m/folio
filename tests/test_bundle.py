@@ -13,7 +13,7 @@ def test_build_release_writes_deterministic_manifest_and_assets(tmp_path: Path):
     out2 = tmp_path / "dist-b"
 
     m1 = build_release(out1, version="v0.1.0", git_sha="abc1234")
-    m2 = build_release(out2, version="v0.1.0", git_sha="abc1234")
+    build_release(out2, version="v0.1.0", git_sha="abc1234")
 
     assert isinstance(m1, BuildManifest)
     manifest1 = json.loads((out1 / "manifest.json").read_text(encoding="utf-8"))
