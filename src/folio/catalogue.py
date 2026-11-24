@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+import json
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from html.parser import HTMLParser
 from importlib import import_module
-import json
 from pathlib import Path
-import re
 from typing import Any, Literal
 
 from django.template import TemplateDoesNotExist

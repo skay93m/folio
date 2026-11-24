@@ -375,7 +375,7 @@ class TrendSeries:
 
     @property
     def table_rows(self) -> tuple[tuple[str, int, int], ...]:
-        return tuple(zip(self.labels, self.completed, self.arrived))
+        return tuple(zip(self.labels, self.completed, self.arrived, strict=True))
 
     def __post_init__(self) -> None:
         require_non_empty(self.period_key, "TrendSeries.period_key")

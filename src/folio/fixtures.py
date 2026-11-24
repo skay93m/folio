@@ -32,8 +32,7 @@ from folio.contracts import (
     WorkQueue,
     WorkStep,
 )
-
-from folio.navigation import PATTERN_KEYS, PATTERN_LABELS, resolve_pattern_key
+from folio.navigation import PATTERN_KEYS, resolve_pattern_key
 
 
 def build_launchpad(

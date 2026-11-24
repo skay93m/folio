@@ -14,9 +14,9 @@ from folio.catalogue import (
     PatternInventory,
     build_catalogue_detail_page,
     build_catalogue_page,
+    build_class_index,
     get_catalogue_entries,
     get_catalogue_entry,
-    build_class_index,
     render_entry_example,
     validate_catalogue,
 )
