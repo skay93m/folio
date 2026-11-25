@@ -119,3 +119,29 @@ def test_scaffold_rejects_invalid_slug_and_duplicate_variants():
         scaffold_html("../escape", fragment_html="<p>bad</p>")
     with pytest.raises(ValueError, match="variant"):
         scaffold_html("good-slug", variants=("A", "A"))
+
+
+def test_scaffold_separates_data_json_into_page_data_script_tag(tmp_path: Path):
+    import json
+    import re
+
+    payload = {"cycle": "2026-12", "items": [{"label": "Rent", "amount": 1650.0}], "note": "Keep `backtick` safe"}
+    html = scaffold_html(
+        "kakeibo-data-sep",
+        fragment_html='<section class="surface p-4"><h1 class="mt-0">Ledger</h1><p>Template only.</p></section>',
+        data_json=payload,
+        static_prefix="assets/",
+    )
+
+    match = re.search(
+        r'<script id="page-data" type="application/json">(.*?)</script>',
+        html,
+        re.DOTALL,
+    )
+    assert match is not None
+    assert json.loads(match.group(1)) == payload
+
+    out_file = tmp_path / "prototype-kakeibo-data-sep.html"
+    out_file.write_text(html, encoding="utf-8")
+    result = verify_target(out_file, run_playwright=True, check_catalogue=False)
+    assert result.passed, f"Expected scaffolded page with #page-data JSON to pass verify_target, got: {result.errors}"

@@ -156,7 +156,9 @@ def _build_context(
         "footer_source_label": getattr(page, "footer_source_label", "open source"),
         "is_stage1_shell": getattr(page, "is_stage1_shell", False),
     }
-    if hasattr(page, "to_json_data"):
+    if getattr(page, "data_json", None) is not None:
+        context["page_json_data"] = page.data_json
+    elif hasattr(page, "to_json_data"):
         context["page_json_data"] = page.to_json_data()
     elif hasattr(page, "periods"):
         context["page_json_data"] = {p.period_key: asdict(p) for p in page.periods}

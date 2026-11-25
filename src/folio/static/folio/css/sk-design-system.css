@@ -2339,6 +2339,23 @@ figcaption {
   text-overflow: ellipsis;
 }
 
+/* Structural hooks used by Folio templates and JS controllers */
+.journal-entry-body,
+.sk-reading-body,
+.sk-statement-zone {
+  min-width: 0;
+}
+
+.sk-quiz-option-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sk-quiz-score-value,
+.sk-quiz-score-total {
+  font-variant-numeric: tabular-nums;
+}
+
 @media print {
   .sk-variant-pill {
     display: none !important;

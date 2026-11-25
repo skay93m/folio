@@ -13,4 +13,7 @@
 {% else %}
   {{ page.body_html|safe }}
 {% endif %}
+{% if page.data_json is not None %}
+  {{ page_json_data|json_script:"page-data" }}
+{% endif %}
 {% if page.wrap_page_shell %}</div>{% endif %}

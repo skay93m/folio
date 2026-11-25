@@ -7,6 +7,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from typing import Any
 
 from folio.contracts import (
     PrintMode,
@@ -48,6 +49,7 @@ class ScaffoldPage:
     title: str
     body_html: str = ""
     variants: tuple[ScaffoldVariant, ...] = ()
+    data_json: Any = None
     theme: ThemeMode = "light"
     print_mode: PrintMode = "colour"
     lang: str = "en-GB"
@@ -219,6 +221,7 @@ def scaffold_html(
     fragment_html: str | None = None,
     variants: Sequence[str] | str | None = None,
     variant_bodies: Mapping[str, str] | None = None,
+    data_json: Any = None,
     title: str | None = None,
     theme: ThemeMode = "light",
     static_prefix: str = "assets/",
@@ -268,6 +271,7 @@ def scaffold_html(
         page = ScaffoldPage(
             title=resolved_title,
             variants=tuple(variant_objs),
+            data_json=data_json,
             theme=theme,
             home_aria_label=resolved_title,
         )
@@ -285,6 +289,7 @@ def scaffold_html(
         page = ScaffoldPage(
             title=resolved_title,
             body_html=body,
+            data_json=data_json,
             theme=theme,
             home_aria_label=resolved_title,
         )
