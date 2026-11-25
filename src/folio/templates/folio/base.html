@@ -14,6 +14,9 @@
     {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}" />{% endif %}
     <link href="{{ asset_urls.bootstrap_css }}" rel="stylesheet" />
     <link href="{{ asset_urls.sk_css }}" rel="stylesheet" />
+    {% for ext_css in asset_urls.extension_css %}
+      <link href="{{ ext_css }}" rel="stylesheet" />
+    {% endfor %}
   </head>
   <body{% if body_classes %} class="{{ body_classes }}"{% endif %}>
     <a class="visually-hidden-focusable skip" href="#main">Skip to content</a>

@@ -387,6 +387,103 @@ def test_verifier_rejects_negative_static_and_overflow_fixtures(tmp_path: Path):
     assert any("mermaid" in err.lower() and "svg" in err.lower() for err in res_unupgraded.errors)
 
 
+def test_verifier_enforces_no_inline_style_elements_with_escape_hatch_and_allows_json_scripts(tmp_path: Path):
+    plain_inline_style = tmp_path / "plain-inline-style.html"
+    plain_inline_style.write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        "<style>body { margin: 0; }</style>"
+        "</head><body><main><p>Plain inline style</p></main></body></html>",
+        encoding="utf-8",
+    )
+    res_blocked = verify_target(plain_inline_style, run_playwright=False, check_catalogue=False)
+    assert not res_blocked.passed
+    assert any(
+        "no-inline-style-elements" in err.lower() and "inline <style>" in err.lower() for err in res_blocked.errors
+    )
+
+    res_allowed = verify_target(
+        plain_inline_style,
+        run_playwright=False,
+        check_catalogue=False,
+        allow_inline_style=True,
+    )
+    assert res_allowed.passed, f"Expected allow_inline_style=True to pass, got {res_allowed.errors}"
+
+    # Token override inside <style> still fails even when allow_inline_style=True
+    override_style = tmp_path / "override-inline-style.html"
+    override_style.write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><head>'
+        "<style>:root { --sk-paper: #ff00ff; }</style>"
+        "</head><body><main><p>Override</p></main></body></html>",
+        encoding="utf-8",
+    )
+    res_override = verify_target(
+        override_style,
+        run_playwright=False,
+        check_catalogue=False,
+        allow_inline_style=True,
+    )
+    assert not res_override.passed
+    assert any("token override" in err.lower() for err in res_override.errors)
+
+    # JSON payload script tag is data, not executable JS
+    json_payload_doc = tmp_path / "json-data.html"
+    json_payload_doc.write_text(
+        '<!doctype html><html lang="en" data-bs-theme="light"><body>'
+        "<main><p>Data separated</p></main>"
+        '<script id="page-data" type="application/json">{"note":"backtick ` ok in json"}</script>'
+        "</body></html>",
+        encoding="utf-8",
+    )
+    res_json = verify_target(json_payload_doc, run_playwright=False, check_catalogue=False)
+    assert res_json.passed, f"Expected JSON script payload to pass, got {res_json.errors}"
+
+
+def test_verifier_enforces_no_unresolved_custom_classes_in_playwright(tmp_path: Path):
+    bad_classes_html = tmp_path / "unresolved-classes.html"
+    bad_classes_html.write_text(
+        '<!doctype html><html lang="en-GB" data-bs-theme="light"><head>'
+        '<link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />'
+        '<link rel="stylesheet" href="assets/css/sk-design-system.css" />'
+        "</head><body>"
+        '<main id="main" class="page-shell">'
+        '<h1 class="mt-0">Custom class check</h1>'
+        '<div class="kakeibo-unmapped-widget zen-missing-card journal-ghost-note sk-phantom-box">Test</div>'
+        '<button type="button" class="btn btn-primary">Save</button>'
+        "</main>"
+        '<script src="assets/vendor/bootstrap.bundle.min.js"></script>'
+        '<script src="assets/js/folio.js"></script>'
+        "</body></html>",
+        encoding="utf-8",
+    )
+    res_fail = verify_target(bad_classes_html, run_playwright=True, check_catalogue=False)
+    assert not res_fail.passed
+    joined = "\n".join(res_fail.errors)
+    assert "no-unresolved-custom-classes" in joined
+    for cls_name in ("kakeibo-unmapped-widget", "zen-missing-card", "journal-ghost-note", "sk-phantom-box"):
+        assert cls_name in joined
+
+    good_ext_html = tmp_path / "resolved-extension-classes.html"
+    good_ext_html.write_text(
+        '<!doctype html><html lang="en-GB" data-bs-theme="light"><head>'
+        '<link rel="stylesheet" href="assets/vendor/bootstrap.min.css" />'
+        '<link rel="stylesheet" href="assets/css/sk-design-system.css" />'
+        '<link rel="stylesheet" href="assets/css/extensions/kakeibo.css" />'
+        "</head><body>"
+        '<main id="main" class="page-shell">'
+        '<h1 class="mt-0">Extension classes</h1>'
+        '<div class="sk-balance-sheet"><details class="sk-disclosure"><summary>Summary</summary></details></div>'
+        '<button type="button" class="btn btn-primary">Save</button>'
+        "</main>"
+        '<script src="assets/vendor/bootstrap.bundle.min.js"></script>'
+        '<script src="assets/js/folio.js"></script>'
+        "</body></html>",
+        encoding="utf-8",
+    )
+    res_pass = verify_target(good_ext_html, run_playwright=True, check_catalogue=False)
+    assert res_pass.passed, f"Expected resolved extension classes to pass, got {res_pass.errors}"
+
+
 def test_verifier_passes_on_built_dist_and_live_server(tmp_path: Path, live_server):
     dist_dir = tmp_path / "dist"
     build_release(dist_dir, version="v0.1.0", git_sha="testsha")

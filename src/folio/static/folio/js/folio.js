@@ -887,6 +887,72 @@
     themeObserver.observe(root, { attributes: true, attributeFilter: ["data-bs-theme"] });
   }
 
+  // 12. Declarative prototype ?variant= switcher pill and keyboard navigation
+  var variantSwitcher = document.querySelector("[data-folio-variant-switcher]");
+  var variantPanels = Array.prototype.slice.call(document.querySelectorAll(".sk-variant-panel[data-variant]"));
+  if (variantSwitcher && variantPanels.length > 0) {
+    var variantLabelEl = document.querySelector("#folio-variant-label");
+    var variantPrevBtn = document.querySelector("#folio-variant-prev");
+    var variantNextBtn = document.querySelector("#folio-variant-next");
+    var activeVariantIdx = 0;
+
+    function findVariantIndex(rawKey) {
+      if (!rawKey) return 0;
+      var target = String(rawKey).trim().toLowerCase();
+      for (var i = 0; i < variantPanels.length; i++) {
+        var panelKey = (variantPanels[i].getAttribute("data-variant") || "").trim().toLowerCase();
+        if (panelKey === target) return i;
+      }
+      return 0;
+    }
+
+    function applyVariant(nextIdx, syncUrl) {
+      activeVariantIdx = ((nextIdx % variantPanels.length) + variantPanels.length) % variantPanels.length;
+      var activePanel = variantPanels[activeVariantIdx];
+      var activeKey = activePanel.getAttribute("data-variant") || "";
+      var activeLabel = activePanel.getAttribute("data-variant-label") || activeKey;
+      variantPanels.forEach(function (panel, idx) {
+        panel.hidden = idx !== activeVariantIdx;
+      });
+      if (variantLabelEl) {
+        variantLabelEl.textContent = activeLabel;
+      }
+      if (syncUrl && activeKey) {
+        var nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set("variant", activeKey);
+        window.history.replaceState(null, "", nextUrl.toString());
+      }
+    }
+
+    applyVariant(findVariantIndex(params.get("variant")), false);
+
+    if (variantPrevBtn) {
+      variantPrevBtn.addEventListener("click", function () {
+        applyVariant(activeVariantIdx - 1, true);
+      });
+    }
+    if (variantNextBtn) {
+      variantNextBtn.addEventListener("click", function () {
+        applyVariant(activeVariantIdx + 1, true);
+      });
+    }
+    document.addEventListener("keydown", function (event) {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      var target = event.target;
+      if (
+        target &&
+        (target.isContentEditable ||
+          (typeof target.closest === "function" &&
+            target.closest("input, textarea, select, [contenteditable]")))
+      ) {
+        return;
+      }
+      event.preventDefault();
+      applyVariant(activeVariantIdx + (event.key === "ArrowRight" ? 1 : -1), true);
+    });
+  }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
       updateQuizScore();

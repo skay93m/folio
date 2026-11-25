@@ -573,3 +573,20 @@ def test_search_index_work_journal_and_work_queue_ssr_state():
     assert resolve_pattern_key("writing") == "work"
     assert resolve_pattern_key("index") == "search"
     assert resolve_pattern_key("unknown", default="launchpad") == "launchpad"
+
+
+@pytest.mark.django_db
+def test_django_and_static_renders_expose_extension_css_assets():
+    from django.contrib.staticfiles import finders
+
+    found = finders.find("folio/css/extensions/kakeibo.css")
+    assert found is not None and Path(found).is_file()
+
+    page = get_pattern_page("launchpad")
+    django_html = folio.render(RequestFactory().get("/"), page).content.decode("utf-8")
+    assert "/static/folio/css/sk-design-system.css" in django_html
+    assert "/static/folio/css/extensions/kakeibo.css" in django_html
+
+    static_html = folio.render_static(page, static_prefix="assets/")
+    assert 'href="assets/css/sk-design-system.css"' in static_html
+    assert 'href="assets/css/extensions/kakeibo.css"' in static_html

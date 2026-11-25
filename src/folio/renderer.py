@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import re
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 import django
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
+
+_EXTENSIONS_CSS_DIR = Path(__file__).resolve().parent / "static" / "folio" / "css" / "extensions"
+
+
+def _extension_css_names() -> tuple[str, ...]:
+    if not _EXTENSIONS_CSS_DIR.is_dir():
+        return ()
+    return tuple(sorted(p.name for p in _EXTENSIONS_CSS_DIR.glob("*.css") if p.is_file()))
 
 
 def ensure_django_setup() -> None:
@@ -42,7 +51,12 @@ def ensure_django_setup() -> None:
     django.setup()
 
 
-def _resolve_asset_urls(static_prefix: str | None = None) -> dict[str, str]:
+def _resolve_asset_urls(
+    static_prefix: str | None = None,
+    *,
+    include_extensions: bool = True,
+) -> dict[str, Any]:
+    ext_names = _extension_css_names() if include_extensions else ()
     if static_prefix is None:
         try:
             from django.templatetags.static import static
@@ -50,6 +64,7 @@ def _resolve_asset_urls(static_prefix: str | None = None) -> dict[str, str]:
             return {
                 "bootstrap_css": static("folio/vendor/bootstrap.min.css"),
                 "sk_css": static("folio/css/sk-design-system.css"),
+                "extension_css": tuple(static(f"folio/css/extensions/{name}") for name in ext_names),
                 "bootstrap_js": static("folio/vendor/bootstrap.bundle.min.js"),
                 "mermaid_js": static("folio/vendor/mermaid.min.js"),
                 "folio_js": static("folio/js/folio.js"),
@@ -62,6 +77,7 @@ def _resolve_asset_urls(static_prefix: str | None = None) -> dict[str, str]:
     return {
         "bootstrap_css": f"{prefix}vendor/bootstrap.min.css",
         "sk_css": f"{prefix}css/sk-design-system.css",
+        "extension_css": tuple(f"{prefix}css/extensions/{name}" for name in ext_names),
         "bootstrap_js": f"{prefix}vendor/bootstrap.bundle.min.js",
         "mermaid_js": f"{prefix}vendor/mermaid.min.js",
         "folio_js": f"{prefix}js/folio.js",
@@ -88,6 +104,11 @@ def _page_has_mermaid(
     body_html = getattr(page, "body_html", "")
     if isinstance(body_html, str) and _MERMAID_MARKER_RE.search(body_html):
         return True
+    variants = getattr(page, "variants", ())
+    if variants and any(
+        isinstance(getattr(v, "body_html", ""), str) and _MERMAID_MARKER_RE.search(v.body_html) for v in variants
+    ):
+        return True
     rendered_entry = getattr(page, "rendered_entry", None)
     if rendered_entry is not None and getattr(rendered_entry.entry, "id", "") == "mermaid-diagram":
         return True
@@ -104,7 +125,7 @@ def _page_has_mermaid(
 def _build_context(
     page: Any,
     *,
-    asset_urls: dict[str, str],
+    asset_urls: dict[str, Any],
     extra_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     context: dict[str, Any] = {
@@ -122,6 +143,7 @@ def _build_context(
         "body_classes": getattr(page, "body_classes", ""),
         "asset_urls": asset_urls,
         "show_theme_toggle": getattr(page, "show_theme_toggle", True),
+        "show_print_selector": getattr(page, "show_print_selector", False),
         "header_actions": getattr(page, "header_actions", ()),
         "home_href": getattr(page, "home_href", "?page=launchpad"),
         "home_aria_label": getattr(page, "home_aria_label", "SK launchpad"),
@@ -133,7 +155,9 @@ def _build_context(
         "footer_source_label": getattr(page, "footer_source_label", "open source"),
         "is_stage1_shell": getattr(page, "is_stage1_shell", False),
     }
-    if hasattr(page, "to_json_data"):
+    if getattr(page, "data_json", None) is not None:
+        context["page_json_data"] = page.data_json
+    elif hasattr(page, "to_json_data"):
         context["page_json_data"] = page.to_json_data()
     elif hasattr(page, "periods"):
         context["page_json_data"] = {p.period_key: asdict(p) for p in page.periods}
@@ -174,12 +198,16 @@ def render_static(
     page: Any,
     *,
     static_prefix: str = "/static/folio/",
-    asset_urls: dict[str, str] | None = None,
+    asset_urls: dict[str, Any] | None = None,
     extra_context: dict[str, Any] | None = None,
+    include_extensions: bool = True,
 ) -> str:
     """Render a complete standalone HTML string for a typed Folio page."""
     ensure_django_setup()
-    resolved_assets = asset_urls or _resolve_asset_urls(static_prefix)
+    resolved_assets = asset_urls or _resolve_asset_urls(
+        static_prefix,
+        include_extensions=include_extensions,
+    )
     context = _build_context(
         page,
         asset_urls=resolved_assets,

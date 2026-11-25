@@ -102,6 +102,44 @@ _CONTRAST_JS = """() => {
   return { checked, failures };
 }"""
 
+_UNRESOLVED_CUSTOM_CLASSES_JS = """() => {
+  const customPrefix = /^(?:sk|kakeibo|zen|journal)-/;
+  const defined = new Set();
+  const classTokenRe = /\\.([A-Za-z_][A-Za-z0-9_-]*)/g;
+  function walkRules(ruleList) {
+    if (!ruleList) return;
+    for (const rule of ruleList) {
+      if (rule.selectorText) {
+        const cleaned = rule.selectorText.replace(/\\[[^\\]]*\\]/g, "");
+        let m;
+        classTokenRe.lastIndex = 0;
+        while ((m = classTokenRe.exec(cleaned)) !== null) {
+          defined.add(m[1]);
+        }
+      }
+      if (rule.cssRules) {
+        walkRules(rule.cssRules);
+      }
+    }
+  }
+  for (const sheet of document.styleSheets) {
+    try {
+      walkRules(sheet.cssRules);
+    } catch (_err) {
+      // Skip stylesheets whose cssRules cannot be read
+    }
+  }
+  const unresolved = new Set();
+  document.querySelectorAll("[class]").forEach(el => {
+    el.classList.forEach(cls => {
+      if (customPrefix.test(cls) && !defined.has(cls)) {
+        unresolved.add(cls);
+      }
+    });
+  });
+  return Array.from(unresolved).sort();
+}"""
+
 
 @dataclass(frozen=True, slots=True)
 class VerificationResult:
@@ -120,13 +158,15 @@ class VerificationResult:
 class _StaticHTMLScanner(HTMLParser):
     """Parse HTML to detect inline JS backticks, style overrides, faux Serif tags, and script refs."""
 
-    def __init__(self, source_name: str) -> None:
+    def __init__(self, source_name: str, *, allow_inline_style: bool = False) -> None:
         super().__init__(convert_charrefs=True)
         self.source_name = source_name
+        self.allow_inline_style = allow_inline_style
         self.errors: list[str] = []
         self.script_srcs: list[str] = []
         self._stack: list[tuple[str, set[str]]] = []
         self._in_script = False
+        self._script_is_js = True
         self._in_style = False
         self._buf: list[str] = []
 
@@ -155,6 +195,8 @@ class _StaticHTMLScanner(HTMLParser):
             src = (attr_map.get("src") or "").strip()
             if src:
                 self.script_srcs.append(src)
+            script_type = (attr_map.get("type") or "").strip().lower().split(";", 1)[0]
+            self._script_is_js = script_type in {"", "text/javascript", "application/javascript", "module"}
             self._in_script = True
             self._buf = []
         elif tag_l == "style":
@@ -165,14 +207,20 @@ class _StaticHTMLScanner(HTMLParser):
         tag_l = tag.lower()
         if tag_l == "script" and self._in_script:
             script_text = "".join(self._buf)
-            if "`" in script_text:
+            if self._script_is_js and "`" in script_text:
                 self.errors.append(
                     f"{self.source_name}: unescaped JS template-literal backtick found in inline <script>"
                 )
             self._in_script = False
+            self._script_is_js = True
             self._buf = []
         elif tag_l == "style" and self._in_style:
             style_text = "".join(self._buf)
+            if not self.allow_inline_style:
+                self.errors.append(
+                    f"{self.source_name}: forbidden inline <style> element (no-inline-style-elements); "
+                    "move CSS to sk-design-system.css or extensions/*.css"
+                )
             if _TOKEN_OVERRIDE_RE.search(style_text):
                 self.errors.append(f"{self.source_name}: unapproved inline <style> token override detected")
             if "file://" in style_text.lower():
@@ -214,16 +262,26 @@ def _scan_js_text(content: str, source_name: str) -> list[str]:
     return []
 
 
-def _scan_html_and_collect_scripts(html: str, source_name: str) -> tuple[list[str], list[str]]:
-    scanner = _StaticHTMLScanner(source_name)
+def _scan_html_and_collect_scripts(
+    html: str,
+    source_name: str,
+    *,
+    allow_inline_style: bool = False,
+) -> tuple[list[str], list[str]]:
+    scanner = _StaticHTMLScanner(source_name, allow_inline_style=allow_inline_style)
     scanner.feed(html)
     scanner.close()
     return scanner.errors, scanner.script_srcs
 
 
-def scan_html_static(html: str, source_name: str) -> list[str]:
+def scan_html_static(
+    html: str,
+    source_name: str,
+    *,
+    allow_inline_style: bool = False,
+) -> list[str]:
     """Run static HTML checks on a single document string."""
-    errors, _ = _scan_html_and_collect_scripts(html, source_name)
+    errors, _ = _scan_html_and_collect_scripts(html, source_name, allow_inline_style=allow_inline_style)
     return errors
 
 
@@ -302,7 +360,11 @@ def _discover_http_targets(base_url: str) -> list[str]:
     return [base_url]
 
 
-def _scan_http_targets(base_url: str) -> tuple[list[str], list[str], list[str]]:
+def _scan_http_targets(
+    base_url: str,
+    *,
+    allow_inline_style: bool = False,
+) -> tuple[list[str], list[str], list[str]]:
     urls = _discover_http_targets(base_url)
     errors: list[str] = []
     js_urls: set[str] = set()
@@ -310,7 +372,11 @@ def _scan_http_targets(base_url: str) -> tuple[list[str], list[str], list[str]]:
 
     for url in urls:
         html = _fetch_url_text(url)
-        html_errors, script_srcs = _scan_html_and_collect_scripts(html, url)
+        html_errors, script_srcs = _scan_html_and_collect_scripts(
+            html,
+            url,
+            allow_inline_style=allow_inline_style,
+        )
         errors.extend(html_errors)
         for src in script_srcs:
             abs_url = urllib.parse.urljoin(url, src)
@@ -337,6 +403,14 @@ def _check_viewports_overflow(page: Any, url: str) -> tuple[list[str], list[str]
             checks.append(f"no-overflow:{label}:{url}")
     page.set_viewport_size({"width": 1280, "height": 800})
     return checks, errors
+
+
+def _check_unresolved_custom_classes(page: Any, url: str) -> tuple[list[str], list[str]]:
+    unresolved = page.evaluate(_UNRESOLVED_CUSTOM_CLASSES_JS)
+    if unresolved:
+        joined = ", ".join(unresolved)
+        return [], [f"{url}: no-unresolved-custom-classes: unresolved custom classes [{joined}]"]
+    return [f"no-unresolved-custom-classes:{url}"], []
 
 
 def _check_sk_tokens_and_fonts(page: Any, url: str) -> list[str]:
@@ -419,7 +493,25 @@ def _check_wcag_contrast_both_themes(page: Any, url: str) -> list[str]:
 
 
 def _check_keyboard_focus(page: Any, url: str) -> list[str]:
-    page.evaluate("() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); }")
+    page.evaluate(
+        """() => {
+            if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+            }
+            if (document.body) {
+                const hadTabIndex = document.body.hasAttribute('tabindex');
+                const prevTabIndex = document.body.getAttribute('tabindex');
+                document.body.setAttribute('tabindex', '-1');
+                document.body.focus({ preventScroll: true });
+                document.body.blur();
+                if (hadTabIndex && prevTabIndex !== null) {
+                    document.body.setAttribute('tabindex', prevTabIndex);
+                } else {
+                    document.body.removeAttribute('tabindex');
+                }
+            }
+        }"""
+    )
     reached_visible_control = False
     for _ in range(10):
         page.keyboard.press("Tab")
@@ -552,6 +644,10 @@ def _run_playwright_checks(urls: Iterable[str]) -> tuple[list[str], list[str]]:
                     else:
                         checks.append(f"stylesheets:{stylesheet_count}:{url}")
 
+                    cls_checks, cls_errors = _check_unresolved_custom_classes(page, url)
+                    checks.extend(cls_checks)
+                    errors.extend(cls_errors)
+
                     vp_checks, vp_errors = _check_viewports_overflow(page, url)
                     checks.extend(vp_checks)
                     errors.extend(vp_errors)
@@ -582,6 +678,7 @@ def verify_target(
     *,
     run_playwright: bool = True,
     check_catalogue: bool = True,
+    allow_inline_style: bool = False,
 ) -> VerificationResult:
     """Run static source/HTML checks and optional headless Playwright verification."""
     checks: list[str] = []
@@ -606,7 +703,10 @@ def verify_target(
 
     try:
         if target_str.startswith(("http://", "https://")):
-            urls, http_checks, http_errors = _scan_http_targets(target_str)
+            urls, http_checks, http_errors = _scan_http_targets(
+                target_str,
+                allow_inline_style=allow_inline_style,
+            )
             checks.extend(http_checks)
             errors.extend(http_errors)
             playwright_urls = urls
@@ -616,7 +716,11 @@ def verify_target(
                 raise FileNotFoundError(f"Verification target does not exist: {path}")
             if path.is_file():
                 html = path.read_text(encoding="utf-8")
-                html_errors, script_srcs = _scan_html_and_collect_scripts(html, path.name)
+                html_errors, script_srcs = _scan_html_and_collect_scripts(
+                    html,
+                    path.name,
+                    allow_inline_style=allow_inline_style,
+                )
                 errors.extend(html_errors)
                 js_paths = _resolve_local_script_paths(script_srcs, path.parent, path.parent)
                 ext_js_errors, ext_js_count = _scan_local_js_files(js_paths, base_dir=path.parent)
@@ -644,6 +748,7 @@ def verify_target(
                         html_errors, script_srcs = _scan_html_and_collect_scripts(
                             html_file.read_text(encoding="utf-8"),
                             rel,
+                            allow_inline_style=allow_inline_style,
                         )
                         errors.extend(html_errors)
                         js_candidates.extend(_resolve_local_script_paths(script_srcs, html_file.parent, path))
@@ -694,3 +799,53 @@ def verify_target(
         checks=tuple(checks),
         errors=tuple(errors),
     )
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI entrypoint for `python -m folio.verifier`."""
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="Verify Folio HTML/URL/dist targets.")
+    parser.add_argument("target", help="HTML file, directory, Obsidian vault, or HTTP URL")
+    parser.add_argument("--static-only", action="store_true", help="Skip headless Playwright checks")
+    parser.add_argument("--no-catalogue", action="store_true", help="Skip catalogue validation")
+    parser.add_argument(
+        "--allow-inline-style",
+        action="store_true",
+        help="Allow <style> elements in legacy fixtures",
+    )
+    parser.add_argument("--json", action="store_true", help="Emit JSON output")
+    args = parser.parse_args(argv)
+
+    res = verify_target(
+        args.target,
+        run_playwright=not args.static_only,
+        check_catalogue=not args.no_catalogue,
+        allow_inline_style=args.allow_inline_style,
+    )
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "passed": res.passed,
+                    "target": res.target,
+                    "checks": list(res.checks),
+                    "errors": list(res.errors),
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    else:
+        status = "PASS" if res.passed else "FAIL"
+        print(f"Folio verify {status}: {res.target}")
+        for check in res.checks:
+            print(f"  [ok] {check}")
+        for err in res.errors:
+            print(f"  [error] {err}")
+    return 0 if res.passed else 1
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())

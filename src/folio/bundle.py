@@ -123,6 +123,7 @@ def _write_pattern_pages(staging: Path, root_hrefs: dict[str, str]) -> None:
             page,
             static_prefix="assets/",
             extra_context=extra,
+            include_extensions=False,
         )
         (staging / DIST_PAGE_FILES[key]).write_text(html, encoding="utf-8")
 
@@ -140,6 +141,7 @@ def _write_catalogue_pages(staging: Path, root_hrefs: dict[str, str]) -> None:
             "gallery_nav": _dist_gallery_nav("elements"),
             "show_print_selector": True,
         },
+        include_extensions=False,
     )
     (staging / "elements.html").write_text(cat_html, encoding="utf-8")
     (staging / "catalogue.html").write_text(cat_html, encoding="utf-8")
@@ -163,6 +165,7 @@ def _write_catalogue_pages(staging: Path, root_hrefs: dict[str, str]) -> None:
             detail_page,
             static_prefix="../assets/",
             extra_context=detail_extra,
+            include_extensions=False,
         )
         (catalogue_dir / f"{entry.id}.html").write_text(detail_html, encoding="utf-8")
 
@@ -199,6 +202,30 @@ def _write_obsidian_bundle(staging: Path) -> None:
     (obsidian_dir / "manifest.json").write_text(theme.manifest_json, encoding="utf-8")
 
 
+def assemble_design_system_css(static_dir: Path | None = None) -> str:
+    """Concatenate core sk-design-system.css with sorted css/extensions/*.css files."""
+    root = static_dir or STATIC_SOURCE_DIR
+    core_path = root / "css" / "sk-design-system.css"
+    parts = [core_path.read_text(encoding="utf-8").rstrip()]
+    ext_dir = root / "css" / "extensions"
+    if ext_dir.is_dir():
+        for ext_path in sorted(ext_dir.glob("*.css")):
+            if ext_path.is_file():
+                ext_text = ext_path.read_text(encoding="utf-8").strip()
+                if ext_text:
+                    parts.append(ext_text)
+    return "\n\n".join(parts) + "\n"
+
+
+def _preserve_prototype_files(dest: Path, staging: Path) -> None:
+    """Preserve any existing dist/prototype-*.html files across atomic release rebuilds."""
+    if not dest.is_dir():
+        return
+    for proto_file in sorted(dest.glob("prototype-*.html")):
+        if proto_file.is_file() and not (staging / proto_file.name).exists():
+            shutil.copy2(proto_file, staging / proto_file.name)
+
+
 def build_release(
     output_dir: Path | str,
     version: str,
@@ -219,6 +246,8 @@ def build_release(
     try:
         staging.mkdir(parents=True, exist_ok=False)
         shutil.copytree(STATIC_SOURCE_DIR, staging / "assets")
+        bundled_css_path = staging / "assets" / "css" / "sk-design-system.css"
+        bundled_css_path.write_text(assemble_design_system_css(STATIC_SOURCE_DIR), encoding="utf-8")
 
         root_hrefs: dict[str, str] = {
             **DIST_PAGE_FILES,
@@ -229,7 +258,7 @@ def build_release(
         _write_pattern_pages(staging, root_hrefs)
         _write_catalogue_pages(staging, root_hrefs)
         _write_obsidian_bundle(staging)
-        class_index = build_class_index(version=version)
+        class_index = build_class_index(version=version, css_path=bundled_css_path)
         (staging / "class-index.json").write_text(
             json.dumps(class_index, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
@@ -254,6 +283,7 @@ def build_release(
             json.dumps(manifest.to_dict(), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        _preserve_prototype_files(dest, staging)
         _atomic_swap(staging, dest)
         return manifest
     finally:
