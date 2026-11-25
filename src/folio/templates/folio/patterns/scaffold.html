@@ -1,0 +1,16 @@
+{% if page.wrap_page_shell %}<div class="page-shell{% if page.variants %} sk-has-variant-pill{% endif %}">{% endif %}
+{% if page.variants %}
+  {% for variant in page.variants %}
+    <div class="sk-variant-panel" data-variant="{{ variant.key }}" data-variant-label="{{ variant.label }}"{% if not forloop.first %} hidden{% endif %}>
+      {{ variant.body_html|safe }}
+    </div>
+  {% endfor %}
+  <nav class="sk-variant-pill" data-folio-variant-switcher="true" aria-label="Prototype variant switcher">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="folio-variant-prev" aria-label="Previous variant">&larr;</button>
+    <span class="sk-variant-label" id="folio-variant-label" aria-live="polite">{{ page.variants.0.label }}</span>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="folio-variant-next" aria-label="Next variant">&rarr;</button>
+  </nav>
+{% else %}
+  {{ page.body_html|safe }}
+{% endif %}
+{% if page.wrap_page_shell %}</div>{% endif %}

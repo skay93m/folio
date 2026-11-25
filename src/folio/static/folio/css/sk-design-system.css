@@ -2302,3 +2302,45 @@ figcaption {
     animation: none !important;
   }
 }
+
+/* Declarative scaffold variant switcher pill */
+.sk-has-variant-pill {
+  padding-bottom: 5.25rem;
+}
+
+.sk-variant-panel[hidden] {
+  display: none !important;
+}
+
+.sk-variant-pill {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 1030;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  max-width: calc(100vw - 1.5rem);
+  border: 1px solid var(--sk-border);
+  border-radius: 999px;
+  background: var(--sk-surface);
+  color: var(--sk-ink);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.sk-variant-label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+  color: var(--sk-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media print {
+  .sk-variant-pill {
+    display: none !important;
+  }
+}

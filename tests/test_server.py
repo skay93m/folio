@@ -27,6 +27,7 @@ def test_prototype_server_serves_prototype_and_design_system_assets(tmp_path: Pa
 
         with urllib.request.urlopen(f"{base_url}/demo.html", timeout=5) as resp:
             assert resp.status == 200
+            assert resp.headers.get("Cache-Control") == "no-store"
             assert "<h1>Demo</h1>" in resp.read().decode("utf-8")
 
         for asset_path, expected_substr in (
@@ -37,6 +38,7 @@ def test_prototype_server_serves_prototype_and_design_system_assets(tmp_path: Pa
         ):
             with urllib.request.urlopen(f"{base_url}/{asset_path}", timeout=5) as resp:
                 assert resp.status == 200
+                assert resp.headers.get("Cache-Control") == "no-store"
                 body = resp.read().decode("utf-8", errors="replace")
                 assert expected_substr in body, f"{asset_path} missing {expected_substr!r}"
 

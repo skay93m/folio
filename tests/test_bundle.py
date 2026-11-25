@@ -82,6 +82,49 @@ def test_build_release_writes_deterministic_manifest_and_assets(tmp_path: Path):
     assert "page-shell" in class_index["layout_primitives"]
 
 
+def test_build_release_bundles_extensions_css_deterministically(tmp_path: Path):
+    from folio.bundle import STATIC_SOURCE_DIR
+
+    ext_css = STATIC_SOURCE_DIR / "css" / "extensions" / "kakeibo.css"
+    assert ext_css.is_file()
+    ext_text = ext_css.read_text(encoding="utf-8")
+    for selector in (
+        ".kakeibo-shell",
+        ".zen-desk-frame",
+        ".sk-journal-rail",
+        ".sk-balance-sheet",
+        ".sk-row-popover",
+        ".sk-disclosure",
+    ):
+        assert selector in ext_text
+
+    out1 = tmp_path / "dist-ext-a"
+    out2 = tmp_path / "dist-ext-b"
+    build_release(out1, version="v0.2.0", git_sha="extsha1")
+    build_release(out2, version="v0.2.0", git_sha="extsha1")
+
+    bundled_css_1 = (out1 / "assets" / "css" / "sk-design-system.css").read_text(encoding="utf-8")
+    bundled_css_2 = (out2 / "assets" / "css" / "sk-design-system.css").read_text(encoding="utf-8")
+    assert bundled_css_1 == bundled_css_2
+    core_css = (STATIC_SOURCE_DIR / "css" / "sk-design-system.css").read_text(encoding="utf-8")
+    assert bundled_css_1.startswith(core_css.rstrip())
+    assert ext_text.strip() in bundled_css_1
+    assert bundled_css_1.index("--sk-paper") < bundled_css_1.index(".kakeibo-shell")
+
+    manifest = json.loads((out1 / "manifest.json").read_text(encoding="utf-8"))
+    assert "assets/css/extensions/kakeibo.css" in manifest["assets"]
+    class_index = json.loads((out1 / "class-index.json").read_text(encoding="utf-8"))
+    for cls_name in (
+        "kakeibo-shell",
+        "zen-desk-frame",
+        "sk-journal-rail",
+        "sk-balance-sheet",
+        "sk-row-popover",
+        "sk-disclosure",
+    ):
+        assert cls_name in class_index["classes"]
+
+
 def test_build_release_preserves_prior_output_on_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     out = tmp_path / "dist"
     build_release(out, version="v0.1.0", git_sha="goodsha")

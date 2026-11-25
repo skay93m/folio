@@ -48,6 +48,7 @@ from folio.obsidian import (
     verify_obsidian_vault,
 )
 from folio.renderer import render, render_static
+from folio.scaffold import ScaffoldPage, ScaffoldVariant, scaffold_html
 from folio.server import start_prototype_server
 from folio.verifier import VerificationResult, verify_target
 
@@ -78,6 +79,8 @@ __all__ = [
     "Reading",
     "ReadingRelation",
     "ReadingSection",
+    "ScaffoldPage",
+    "ScaffoldVariant",
     "SearchFacet",
     "SearchFacetValue",
     "SearchFilter",
@@ -97,6 +100,7 @@ __all__ = [
     "build_release",
     "render",
     "render_static",
+    "scaffold_html",
     "start_prototype_server",
     "sync_obsidian_theme",
     "validate_catalogue",
