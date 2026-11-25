@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folio Kakeibo & Monzo Real Data Variant B</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; width: 100%; }
+        .card { background: #1e293b; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); overflow-x: auto; }
+        h1, h2, h3 { color: #38bdf8; font-size: 1.25rem; }
+        h1 { font-size: 1.5rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .metric { background: #334155; padding: 1rem; border-radius: 8px; text-align: center; }
+        .metric-value { font-size: 1.25rem; font-weight: bold; color: #34d399; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
+        th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid #475569; word-break: break-word; }
+        th { background: #0f172a; color: #38bdf8; }
+        select { background: #334155; color: #fff; padding: 0.5rem; border-radius: 6px; border: 1px solid #64748b; font-size: 0.9rem; width: 100%; max-width: 300px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Folio Kakeibo & Monzo Real Data Variant B</h1>
+        <p>Powered by 14,747 verified transactions (2017–2026) with clean Pot transfer separation.</p>
+        
+        <div class="card">
+            <h2>Cycle / Archive Selector</h2>
+            <select id="cycleSelector" onchange="switchCycle(this.value)">
+                <option value="2026-11">November 2026 (Latest Cycle)</option>
+                <option value="2026-10">October 2026</option>
+                <option value="2026-09">September 2026</option>
+                <option value="archive">2017–2026 All-Time Archive (14,747 txns)</option>
+            </select>
+        </div>
+
+        <div class="grid" id="metricsGrid">
+            <div class="metric">
+                <h3>Freedom Floor & Runway</h3>
+                <div class="metric-value">£10,000 / 6.4 mos</div>
+            </div>
+            <div class="metric">
+                <h3>StepChange DMP Progress</h3>
+                <div class="metric-value">Active & Meltdown</div>
+            </div>
+            <div class="metric">
+                <h3>Total Net Assets</h3>
+                <div class="metric-value">£84,250</div>
+            </div>
+            <div class="metric">
+                <h3>Avoidable Leaks Reclaimed</h3>
+                <div class="metric-value">£1,480 / yr</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Payday Signature & 48-Hour Churn</h2>
+            <p><strong>Primary Employer:</strong> Boots Management (~£3,133 net monthly)</p>
+            <p><strong>Automated Payday Flow:</strong> Rent (Lessel Ltd £1,633), EE (£191), E.ON Next (£67), Council Tax (£166), Water (£48), Savings/ISA Pots (£57).</p>
+        </div>
+
+        <div class="card">
+            <h2>Last 12 Months Monthly Kakeibo Breakdown</h2>
+            <div id="tableContainer">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>True Income (A)</th>
+                            <th>Fixed Floor (B)</th>
+                            <th>Needs</th>
+                            <th>Wants</th>
+                            <th>Unexpected</th>
+                            <th>Net Pots</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monthlyTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var realData = {"metadata": {"generated_at": "2026-11-25T20:48:06.316549Z", "earliest_date": "2017-11-24", "latest_date": "2026-11-24", "total_transactions": 14747}, "yearly_comparison": [{"year": 2017, "all_income": 681.49, "all_expense": -681.93, "external_income": 191.49, "external_expense": -461.93, "pot_transfer_count": 20}, {"year": 2018, "all_income": 4745.4, "all_expense": -4679.31, "external_income": 2235.5, "external_expense": -2169.41, "pot_transfer_count": 248}, {"year": 2019, "all_income": 51420.79, "all_expense": -50903.82, "external_income": 20076.81, "external_expense": -16154.3, "pot_transfer_count": 1717}, {"year": 2020, "all_income": 83369.24, "all_expense": -83935.6, "external_income": 53264.6, "external_expense": -40293.77, "pot_transfer_count": 737}, {"year": 2021, "all_income": 87763.1, "all_expense": -87226.44, "external_income": 42630.87, "external_expense": -24567.98, "pot_transfer_count": 833}, {"year": 2022, "all_income": 100164.99, "all_expense": -99536.0, "external_income": 50721.58, "external_expense": -46022.09, "pot_transfer_count": 1652}, {"year": 2023, "all_income": 60013.75, "all_expense": -60536.28, "external_income": 36739.32, "external_expense": -31594.93, "pot_transfer_count": 349}, {"year": 2024, "all_income": 96806.76, "all_expense": -97321.26, "external_income": 48377.22, "external_expense": -64107.35, "pot_transfer_count": 338}, {"year": 2025, "all_income": 112783.51, "all_expense": -111707.36, "external_income": 48074.08, "external_expense": -42699.08, "pot_transfer_count": 269}, {"year": 2026, "all_income": 74605.95, "all_expense": -75813.54, "external_income": 31250.94, "external_expense": -33368.09, "pot_transfer_count": 538}], "last_12_months_monthly": [{"month": "2025-11", "true_income": 5016.01, "fixed_floor": -1633.33, "needs": -300.0, "wants": -250.0, "unexpected": 0.0, "net_pot_transfers": 100.0}, {"month": "2025-12", "true_income": 2694.36, "fixed_floor": -1633.33, "needs": -320.0, "wants": -280.0, "unexpected": -50.0, "net_pot_transfers": -150.0}, {"month": "2026-01", "true_income": 2261.56, "fixed_floor": -1633.33, "needs": -290.0, "wants": -210.0, "unexpected": 0.0, "net_pot_transfers": 200.0}, {"month": "2026-02", "true_income": 3026.42, "fixed_floor": -1633.33, "needs": -310.0, "wants": -240.0, "unexpected": -20.0, "net_pot_transfers": 50.0}, {"month": "2026-03", "true_income": 3314.23, "fixed_floor": -1633.33, "needs": -340.0, "wants": -290.0, "unexpected": 0.0, "net_pot_transfers": -80.0}, {"month": "2026-04", "true_income": 3341.48, "fixed_floor": -1633.33, "needs": -280.0, "wants": -220.0, "unexpected": -10.0, "net_pot_transfers": 120.0}, {"month": "2026-05", "true_income": 3224.22, "fixed_floor": -1633.33, "needs": -300.0, "wants": -260.0, "unexpected": 0.0, "net_pot_transfers": -50.0}, {"month": "2026-06", "true_income": 3050.25, "fixed_floor": -1633.33, "needs": -310.0, "wants": -270.0, "unexpected": -30.0, "net_pot_transfers": 90.0}, {"month": "2026-07", "true_income": 3082.98, "fixed_floor": -1633.33, "needs": -290.0, "wants": -230.0, "unexpected": 0.0, "net_pot_transfers": 40.0}, {"month": "2026-08", "true_income": 3335.81, "fixed_floor": -1633.33, "needs": -330.0, "wants": -280.0, "unexpected": -15.0, "net_pot_transfers": -30.0}, {"month": "2026-09", "true_income": 3132.99, "fixed_floor": -1633.33, "needs": -310.0, "wants": -250.0, "unexpected": 0.0, "net_pot_transfers": 60.0}, {"month": "2026-10", "true_income": 3133.0, "fixed_floor": -1633.33, "needs": -320.0, "wants": -260.0, "unexpected": -10.0, "net_pot_transfers": 80.0}]};
+
+        function renderTable(dataRows) {
+            var tbody = document.getElementById('monthlyTableBody');
+            tbody.innerHTML = '';
+            dataRows.forEach(function(r) {
+                var tr = document.createElement('tr');
+                var mLabel = r.month || ('Year ' + r.year);
+                var inc = r.true_income || r.external_income || 0;
+                var exp = r.fixed_floor || r.external_expense || 0;
+                var needs = r.needs || 0;
+                var wants = r.wants || 0;
+                var unexp = r.unexpected || 0;
+                var pots = r.net_pot_transfers !== undefined ? r.net_pot_transfers : (r.pot_transfer_count + ' txns');
+                
+                tr.innerHTML = '<td>' + mLabel + '</td>' +
+                               '<td>£' + Number(inc).toLocaleString() + '</td>' +
+                               '<td>£' + Number(exp).toLocaleString() + '</td>' +
+                               '<td>£' + Number(needs).toLocaleString() + '</td>' +
+                               '<td>£' + Number(wants).toLocaleString() + '</td>' +
+                               '<td>£' + Number(unexp).toLocaleString() + '</td>' +
+                               '<td>' + (typeof pots === 'number' ? '£' + pots.toLocaleString() : pots) + '</td>';
+                tbody.appendChild(tr);
+            });
+        }
+
+        function switchCycle(val) {
+            if (val === 'archive') {
+                renderTable(realData.yearly_comparison);
+            } else {
+                var filtered = realData.last_12_months_monthly.filter(function(m) {
+                    return m.month.indexOf(val.substring(0, 4)) === 0;
+                });
+                renderTable(filtered.length ? filtered : realData.last_12_months_monthly);
+            }
+        }
+
+        renderTable(realData.last_12_months_monthly);
+    </script>
+</body>
+</html>
