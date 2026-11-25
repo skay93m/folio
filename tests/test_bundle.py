@@ -142,3 +142,26 @@ def test_build_release_preserves_prior_output_on_failure(tmp_path: Path, monkeyp
 
     assert sentinel.read_bytes() == original_bytes
     assert json.loads(sentinel.read_text(encoding="utf-8"))["version"] == "v0.1.0"
+
+
+def test_build_release_preserves_existing_prototype_html_files(tmp_path: Path):
+    out = tmp_path / "dist"
+    baseline = tmp_path / "dist-baseline"
+    build_release(baseline, version="v0.1.0", git_sha="protosha")
+    build_release(out, version="v0.1.0", git_sha="protosha")
+
+    proto_a = out / "prototype-budget-ledger.html"
+    proto_b = out / "prototype-custom-view.html"
+    proto_a.write_text("<!doctype html><html><body>Budget ledger prototype</body></html>", encoding="utf-8")
+    proto_b.write_text("<!doctype html><html><body>Custom prototype</body></html>", encoding="utf-8")
+    stale_other = out / "stale-non-prototype.html"
+    stale_other.write_text("stale", encoding="utf-8")
+
+    build_release(out, version="v0.1.0", git_sha="protosha")
+
+    assert proto_a.is_file()
+    assert proto_a.read_text(encoding="utf-8") == "<!doctype html><html><body>Budget ledger prototype</body></html>"
+    assert proto_b.is_file()
+    assert proto_b.read_text(encoding="utf-8") == "<!doctype html><html><body>Custom prototype</body></html>"
+    assert not stale_other.exists()
+    assert (out / "manifest.json").read_bytes() == (baseline / "manifest.json").read_bytes()

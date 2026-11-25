@@ -14,7 +14,7 @@ from folio.verifier import _serve_directory, verify_target
 def test_scaffold_html_wraps_semantic_fragment_and_passes_verifier(tmp_path: Path):
     fragment = (
         '<h1 class="mt-0">Weekly balance review</h1>'
-        '<p>Compare spending against planned categories.</p>'
+        "<p>Compare spending against planned categories.</p>"
         '<div class="d-flex gap-2 align-items-center">'
         '<span class="status status-success">On track</span>'
         '<button type="button" class="btn btn-primary">Save check</button>'
@@ -145,3 +145,30 @@ def test_scaffold_separates_data_json_into_page_data_script_tag(tmp_path: Path):
     out_file.write_text(html, encoding="utf-8")
     result = verify_target(out_file, run_playwright=True, check_catalogue=False)
     assert result.passed, f"Expected scaffolded page with #page-data JSON to pass verify_target, got: {result.errors}"
+
+
+def test_scaffold_preserves_attributes_on_data_variant_tags():
+    fragment = (
+        '<section id="sec-alpha" class="surface p-4" aria-label="Alpha surface" '
+        'data-variant="A" data-variant-label="A: Alpha">'
+        '<h1 class="mt-0">Alpha</h1>'
+        "</section>"
+        '<article id="art-beta" class="surface p-3" data-custom="keep-me" '
+        'data-variant="B" data-variant-label="B: Beta">'
+        '<h1 class="mt-0">Beta</h1>'
+        "</article>"
+    )
+    html = scaffold_html("attr-check", fragment_html=fragment, variants=("A", "B"))
+    assert '<section id="sec-alpha" class="surface p-4" aria-label="Alpha surface">' in html
+    assert '<article id="art-beta" class="surface p-3" data-custom="keep-me">' in html
+    assert html.count('data-variant="A"') == 1
+    assert html.count('data-variant="B"') == 1
+
+    no_ext_html = scaffold_html(
+        "attr-check",
+        fragment_html=fragment,
+        variants=("A", "B"),
+        include_extensions=False,
+    )
+    assert "assets/css/sk-design-system.css" in no_ext_html
+    assert "assets/css/extensions/kakeibo.css" not in no_ext_html

@@ -397,7 +397,9 @@ def test_verifier_enforces_no_inline_style_elements_with_escape_hatch_and_allows
     )
     res_blocked = verify_target(plain_inline_style, run_playwright=False, check_catalogue=False)
     assert not res_blocked.passed
-    assert any("no-inline-style-elements" in err.lower() and "inline <style>" in err.lower() for err in res_blocked.errors)
+    assert any(
+        "no-inline-style-elements" in err.lower() and "inline <style>" in err.lower() for err in res_blocked.errors
+    )
 
     res_allowed = verify_target(
         plain_inline_style,
@@ -428,7 +430,7 @@ def test_verifier_enforces_no_inline_style_elements_with_escape_hatch_and_allows
     json_payload_doc = tmp_path / "json-data.html"
     json_payload_doc.write_text(
         '<!doctype html><html lang="en" data-bs-theme="light"><body>'
-        '<main><p>Data separated</p></main>'
+        "<main><p>Data separated</p></main>"
         '<script id="page-data" type="application/json">{"note":"backtick ` ok in json"}</script>'
         "</body></html>",
         encoding="utf-8",

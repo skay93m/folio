@@ -106,8 +106,7 @@ def _page_has_mermaid(
         return True
     variants = getattr(page, "variants", ())
     if variants and any(
-        isinstance(getattr(v, "body_html", ""), str) and _MERMAID_MARKER_RE.search(v.body_html)
-        for v in variants
+        isinstance(getattr(v, "body_html", ""), str) and _MERMAID_MARKER_RE.search(v.body_html) for v in variants
     ):
         return True
     rendered_entry = getattr(page, "rendered_entry", None)
@@ -126,7 +125,7 @@ def _page_has_mermaid(
 def _build_context(
     page: Any,
     *,
-    asset_urls: dict[str, str],
+    asset_urls: dict[str, Any],
     extra_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     context: dict[str, Any] = {

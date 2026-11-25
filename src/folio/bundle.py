@@ -217,6 +217,15 @@ def assemble_design_system_css(static_dir: Path | None = None) -> str:
     return "\n\n".join(parts) + "\n"
 
 
+def _preserve_prototype_files(dest: Path, staging: Path) -> None:
+    """Preserve any existing dist/prototype-*.html files across atomic release rebuilds."""
+    if not dest.is_dir():
+        return
+    for proto_file in sorted(dest.glob("prototype-*.html")):
+        if proto_file.is_file() and not (staging / proto_file.name).exists():
+            shutil.copy2(proto_file, staging / proto_file.name)
+
+
 def build_release(
     output_dir: Path | str,
     version: str,
@@ -274,6 +283,7 @@ def build_release(
             json.dumps(manifest.to_dict(), indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        _preserve_prototype_files(dest, staging)
         _atomic_swap(staging, dest)
         return manifest
     finally:

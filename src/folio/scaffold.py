@@ -82,6 +82,26 @@ class ScaffoldPage:
         return not bool(_PAGE_SHELL_MARKER_RE.search(self.body_html))
 
 
+def _format_preserved_starttag(
+    tag: str,
+    attrs: list[tuple[str, str | None]],
+    *,
+    self_closing: bool = False,
+) -> str:
+    """Reconstruct a [data-variant] start tag preserving all attributes except variant switcher metadata."""
+    kept: list[str] = []
+    for name, value in attrs:
+        if name.lower() in {"data-variant", "data-variant-label"}:
+            continue
+        if value is None:
+            kept.append(name)
+        else:
+            kept.append(f'{name}="{html.escape(value, quote=True)}"')
+    attr_str = f" {' '.join(kept)}" if kept else ""
+    suffix = " />" if self_closing else ">"
+    return f"<{tag}{attr_str}{suffix}"
+
+
 class _VariantExtractor(HTMLParser):
     """Extract top-level [data-variant] blocks from an HTML fragment."""
 
@@ -91,6 +111,7 @@ class _VariantExtractor(HTMLParser):
         self._active_key: str | None = None
         self._active_label: str = ""
         self._active_tag: str = ""
+        self._open_tag: str = ""
         self._depth: int = 0
         self._buf: list[str] = []
 
@@ -104,11 +125,15 @@ class _VariantExtractor(HTMLParser):
                 self._active_key = vkey
                 self._active_label = (attr_map.get("data-variant-label") or "").strip()
                 self._active_tag = tag_l
+                self._open_tag = _format_preserved_starttag(tag, attrs)
                 self._depth = 0 if tag_l in _VOID_TAGS else 1
                 self._buf = []
                 if self._depth == 0:
-                    self.extracted.append((self._active_key, self._active_label, raw))
+                    self.extracted.append((self._active_key, self._active_label, self._open_tag))
                     self._active_key = None
+                    self._active_label = ""
+                    self._active_tag = ""
+                    self._open_tag = ""
                 return
         else:
             if tag_l == self._active_tag and tag_l not in _VOID_TAGS:
@@ -117,6 +142,14 @@ class _VariantExtractor(HTMLParser):
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         raw = self.get_starttag_text() or f"<{tag} />"
+        if self._active_key is None:
+            attr_map = dict(attrs)
+            vkey = (attr_map.get("data-variant") or "").strip()
+            if vkey:
+                label = (attr_map.get("data-variant-label") or "").strip()
+                preserved = _format_preserved_starttag(tag, attrs, self_closing=True)
+                self.extracted.append((vkey, label, preserved))
+                return
         if self._active_key is not None:
             self._buf.append(raw)
 
@@ -127,10 +160,13 @@ class _VariantExtractor(HTMLParser):
         if tag_l == self._active_tag:
             self._depth -= 1
             if self._depth == 0:
-                self.extracted.append((self._active_key, self._active_label, "".join(self._buf).strip()))
+                inner = "".join(self._buf).strip()
+                full_block = f"{self._open_tag}{inner}</{tag}>"
+                self.extracted.append((self._active_key, self._active_label, full_block))
                 self._active_key = None
                 self._active_label = ""
                 self._active_tag = ""
+                self._open_tag = ""
                 self._buf = []
                 return
         self._buf.append(f"</{tag}>")
@@ -155,23 +191,17 @@ class _VariantExtractor(HTMLParser):
 def validate_slug(slug: str) -> str:
     """Validate a safe lowercase kebab/snake prototype slug."""
     if not isinstance(slug, str) or not _SLUG_RE.fullmatch(slug):
-        raise ValueError(
-            f"Invalid prototype slug {slug!r}: must match ^[a-z0-9][a-z0-9_-]*$"
-        )
+        raise ValueError(f"Invalid prototype slug {slug!r}: must match ^[a-z0-9][a-z0-9_-]*$")
     return slug
-
-
-def default_prototype_filename(slug: str) -> str:
-    """Return canonical prototype filename (`prototype-<slug>.html` unless already prefixed)."""
-    validated = validate_slug(slug)
-    return f"{validated}.html" if validated.startswith("prototype-") else f"prototype-{validated}.html"
 
 
 def parse_variants_spec(spec: str | Sequence[str] | None) -> list[tuple[str, str]]:
     """Parse `--variants A,B,C` or `A:Map,B:Dashboard` into `(key, label)` pairs."""
     if spec is None:
         return []
-    raw_items = [part.strip() for part in spec.split(",")] if isinstance(spec, str) else [str(item).strip() for item in spec]
+    raw_items = (
+        [part.strip() for part in spec.split(",")] if isinstance(spec, str) else [str(item).strip() for item in spec]
+    )
     items = [item for item in raw_items if item]
     if not items:
         return []
@@ -210,8 +240,8 @@ def _starter_variant_body(key: str, label: str) -> str:
         f'<section class="surface p-4">\n'
         f'  <span class="eyebrow">Variant {safe_key}</span>\n'
         f'  <h1 class="mt-2">{safe_label}</h1>\n'
-        f'  <p>Semantic prototype surface for variant {safe_key}.</p>\n'
-        f'</section>'
+        f"  <p>Semantic prototype surface for variant {safe_key}.</p>\n"
+        f"</section>"
     )
 
 
@@ -225,10 +255,13 @@ def scaffold_html(
     title: str | None = None,
     theme: ThemeMode = "light",
     static_prefix: str = "assets/",
+    include_extensions: bool = True,
 ) -> str:
     """Compile semantic body HTML (and optional variants) into a complete SK Design System page."""
     validated_slug = validate_slug(slug)
-    resolved_title = title.strip() if isinstance(title, str) and title.strip() else _default_title_from_slug(validated_slug)
+    resolved_title = (
+        title.strip() if isinstance(title, str) and title.strip() else _default_title_from_slug(validated_slug)
+    )
     parsed_variants = parse_variants_spec(variants)
 
     extracted: list[tuple[str, str, str]] = []
@@ -282,8 +315,8 @@ def scaffold_html(
             else (
                 f'<section class="surface p-4">\n'
                 f'  <h1 class="mt-0">{html.escape(resolved_title)}</h1>\n'
-                f'  <p>Semantic prototype surface.</p>\n'
-                f'</section>'
+                f"  <p>Semantic prototype surface.</p>\n"
+                f"</section>"
             )
         )
         page = ScaffoldPage(
@@ -294,4 +327,4 @@ def scaffold_html(
             home_aria_label=resolved_title,
         )
 
-    return render_static(page, static_prefix=static_prefix)
+    return render_static(page, static_prefix=static_prefix, include_extensions=include_extensions)
